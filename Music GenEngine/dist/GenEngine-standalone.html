@@ -4818,14 +4818,19 @@ window.G = window.G || {};
     G.el('summary', '', gbHelp, '🍎 Where are my GarageBand sounds?');
     const gbBody = G.el('div', '', gbHelp);
     gbBody.innerHTML = `
-      <p>On your Mac, GarageBand's loops and one-shots live here — open Finder, press <b>⌘⇧G</b> and paste:</p>
+      <p>GarageBand scatters its sounds across several places on your Mac — including inside the app itself.
+      Open Finder, press <b>⌘⇧G</b> and paste any of:</p>
       <ul>
+        <li><code>/Applications/GarageBand.app/Contents</code> — inside the app bundle (right-click GarageBand → Show Package Contents)</li>
         <li><code>/Library/Audio/Apple Loops/Apple</code> — the big Apple Loops collection</li>
+        <li><code>/Library/Application Support/GarageBand</code> — the Instrument Library (sampler one-shots, drum kits)</li>
+        <li><code>/Library/Application Support/Logic</code> — shared sound content</li>
         <li><code>~/Library/Audio/Apple Loops/User Loops</code> — loops you saved yourself</li>
-        <li><code>/Library/Application Support/GarageBand/Instrument Library/Sampler/Sampler Files</code> — instrument one-shots</li>
       </ul>
-      <p>Drag any of those files straight into the drop zone above. <b>Safari decodes .caf and .aif natively.</b>
-      In Chrome, run <code>tools/convert_apple_loops.sh</code> (included with this app) to batch-convert loops to WAV first.</p>`;
+      <p>Drag files or whole folders into the drop zone above. <b>Safari decodes .caf and .aif natively.</b></p>
+      <p>Easiest of all: run <code>tools/convert_apple_loops.sh</code> (included) once in Terminal — it scans
+      <b>all</b> of those locations automatically, converts everything to WAV, and collects it in
+      <code>~/Desktop/Music GenEngine/GarageBand Sounds</code>, ready for “Import folder…” in any browser.</p>`;
 
     sampleListEl = G.el('div', 'sample-list', sampCol);
     renderSamples();

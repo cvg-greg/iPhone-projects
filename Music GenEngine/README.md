@@ -59,16 +59,20 @@ Lift-Off Riser, Downlifter, Impact Boom…*
 
 ## 🍎 Using your GarageBand sounds
 
-Your Mac already has thousands of sounds. In Finder press **⌘⇧G** and go to:
+Your Mac already has thousands of sounds, scattered across several places —
+**including inside the GarageBand app bundle itself**. In Finder press **⌘⇧G** and go to any of:
 
+- `/Applications/GarageBand.app/Contents` — inside the app (or right-click GarageBand.app → *Show Package Contents*)
 - `/Library/Audio/Apple Loops/Apple` — the big Apple Loops collection
+- `/Library/Application Support/GarageBand` — the Instrument Library: sampler one-shots, drum kits
+- `/Library/Application Support/Logic` — shared sound content
 - `~/Library/Audio/Apple Loops/User Loops` — your own saved loops
-- `/Library/Application Support/GarageBand/Instrument Library/Sampler/Sampler Files` — one-shot instrument samples
 
 Drag files (or whole folders) into **LIBRARY → drop zone**.
 
 - **Safari** decodes `.caf` and `.aif` natively — everything just works.
-- **Chrome** prefers WAV/MP3/M4A. Run the included converter once:
+- **Chrome** prefers WAV/MP3/M4A. Run the included **harvester** once — it scans *all*
+  of the locations above automatically (pass a folder to scan just that one):
 
 ```bash
 cd ~/Desktop/"Music GenEngine"/tools
@@ -76,7 +80,14 @@ chmod +x convert_apple_loops.sh
 ./convert_apple_loops.sh
 ```
 
-…then import `~/Desktop/Music GenEngine/Converted Loops` from the LIBRARY tab.
+Everything lands in `~/Desktop/Music GenEngine/GarageBand Sounds/`, organized by
+source (*App Bundle*, *Apple Loops*, *Instrument Library*, …). Then in GENENGINE:
+**LIBRARY → Import folder…** and pick that folder — subfolders come along automatically.
+Re-running the script only converts what's new, so it's safe to repeat after
+GarageBand downloads more content.
+
+> Heads-up: the full Apple Loops set can be several thousand files. If a bulk import
+> feels heavy in the browser, import one subfolder at a time.
 
 ## ⌨️ Shortcuts
 
