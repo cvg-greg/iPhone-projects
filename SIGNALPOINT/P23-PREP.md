@@ -3,13 +3,20 @@
 (`2026-08-31_SIGNALPOINT_phase-23-work-order.md`).**
 
 > **Scope of this prep — read this first.** This document was assembled in a
-> remote session that has only the work order; the standing chain (the board /
-> SYSTEMS-LEDGER, the venture memory, signalpoint-platform README + BUILDLOG
-> tail + PHASE-INDEX + GLOSSARY, the plan's P23 entry through the amendments)
-> lives on the launch machine and was NOT readable here. **The P23 kickoff
-> session must still run the full read-in and prove it** — this prep does not
-> substitute for it. Nothing here is a ruling; every "recommend" below is a
-> staged proposal awaiting GW's cut at the freeze table.
+> remote session. Read here: the P23 work order, and the **cross-system
+> SYSTEMS LEDGER** (the SwiftBridge whiteboard, 08-28 state) — which is NOT
+> the SIGNALPOINT board: its §5 separation ruling (GW, 08-28) cut SIGNALPOINT
+> to its own board at `~/Desktop/SPAfiles/SIGNALPOINT-SYSTEMS-LEDGER.md`, two
+> ventures never intermingled, no bridge/shim/shared helper in either
+> direction, no ⚑ taken or left. NOT readable here: the SIGNALPOINT board
+> itself, the venture memory, signalpoint-platform README + BUILDLOG tail +
+> PHASE-INDEX + GLOSSARY, and the plan's P23 entry through the amendments —
+> they live on the launch machine. **The P23 kickoff session must still run
+> the full read-in and prove it** — this prep does not substitute for it.
+> Nothing here is a ruling; every "recommend" below is a staged proposal
+> awaiting GW's cut at the freeze table. (The cross-system ledger's naming
+> law — crossing #15, GW's final cut on every persistent name BEFORE first
+> commit or use — matches the venture's naming law assumed throughout.)
 
 ---
 
