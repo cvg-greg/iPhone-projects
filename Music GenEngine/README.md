@@ -71,13 +71,25 @@ Your Mac already has thousands of sounds, scattered across several places —
 Drag files (or whole folders) into **LIBRARY → drop zone**.
 
 - **Safari** decodes `.caf` and `.aif` natively — everything just works.
-- **Chrome** prefers WAV/MP3/M4A. Run the included **harvester** once — it scans *all*
-  of the locations above automatically (pass a folder to scan just that one):
+- **Chrome** prefers WAV/MP3/M4A — run the harvester once and it's handled:
+
+### The easy way — double-click the harvester
+
+**Double-click `Harvest GarageBand Sounds.command`** (in this folder). The first
+time, macOS may warn about an unidentified developer — **right-click it → Open → Open**.
+It scans *all* the locations above, converts everything, and pops open the result in
+Finder when done.
+
+> If double-clicking complains the file isn't executable (this can happen when the
+> file was downloaded on its own rather than in the repo ZIP): open Terminal, type
+> `bash ` (with a trailing space), drag the `.command` file into the window, press Return.
+
+### The Terminal way
 
 ```bash
 cd ~/Desktop/"Music GenEngine"/tools
 chmod +x convert_apple_loops.sh
-./convert_apple_loops.sh
+./convert_apple_loops.sh          # or pass a folder to scan just that one
 ```
 
 Everything lands in `~/Desktop/Music GenEngine/GarageBand Sounds/`, organized by

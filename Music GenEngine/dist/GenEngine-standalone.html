@@ -4828,9 +4828,10 @@ window.G = window.G || {};
         <li><code>~/Library/Audio/Apple Loops/User Loops</code> — loops you saved yourself</li>
       </ul>
       <p>Drag files or whole folders into the drop zone above. <b>Safari decodes .caf and .aif natively.</b></p>
-      <p>Easiest of all: run <code>tools/convert_apple_loops.sh</code> (included) once in Terminal — it scans
-      <b>all</b> of those locations automatically, converts everything to WAV, and collects it in
-      <code>~/Desktop/Music GenEngine/GarageBand Sounds</code>, ready for “Import folder…” in any browser.</p>`;
+      <p>Easiest of all: <b>double-click “Harvest GarageBand Sounds.command”</b> (next to this app — first time:
+      right-click it → Open → Open). It scans <b>all</b> of those locations automatically, converts everything
+      to WAV, and opens the result — <code>~/Desktop/Music GenEngine/GarageBand Sounds</code> — in Finder.
+      Then use “Import folder…” above and pick that folder.</p>`;
 
     sampleListEl = G.el('div', 'sample-list', sampCol);
     renderSamples();
