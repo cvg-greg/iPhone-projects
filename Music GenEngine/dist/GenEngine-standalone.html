@@ -5077,6 +5077,16 @@ window.G = window.G || {};
   // ---------------- export ----------------
   const exportDialog = () => {
     G.modal('⬇ Export audio', (body, close) => {
+      if (G.hostedWavBlocked) {
+        // hosted preview sandbox can save projects but not .wav files
+        body.innerHTML = `
+          <p style="line-height:1.7">You're in the <b>hosted preview</b> — it can save your <b>project</b> (💾 Save),
+          but the sandbox can't hand out <b>.wav</b> audio files.</p>
+          <p style="line-height:1.7">To export audio: open the downloadable app
+          (<code>GenEngine-standalone.html</code> — sent in chat, and in the repo's <code>dist</code> folder),
+          use <b>📂 Open</b> to load the project you saved here, then <b>⬇ Export WAV</b> there. Same engine, bit-identical render.</p>`;
+        return;
+      }
       G.el('div', 'dim', body, 'Renders offline through the full mixer, FX and automation. 16-bit stereo WAV.');
       const b1 = G.el('button', 'btn glow big', body, '🎵 Export full song  (playlist)');
       const b2 = G.el('button', 'btn subtle big', body, '▦ Export current pattern  (' + G.curPattern().name + ')');
