@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GENENGINE Songbook</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📖</text></svg>">
+<style>
+  /* Single-theme by design: the Songbook lives in the same neon studio
+     world as the app it documents. Everything painted explicitly. */
+  :root {
+    --bg: #07090f; --page: #0d1119; --panel: #11151d; --panel2: #171c26;
+    --line: #232a38; --text: #cfd8e3; --dim: #8b96a5;
+    --cyan: #22d3ee; --magenta: #e879f9; --amber: #f5a623; --green: #34d399;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: "Segoe UI", "SF Pro Text", -apple-system, Roboto, sans-serif;
+    font-size: 15.5px; line-height: 1.75;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 22px 90px; }
+
+  /* ---------- cover ---------- */
+  .cover { text-align: center; padding: 84px 0 56px; }
+  .cover-logo { font-size: 44px; font-weight: 800; letter-spacing: 5px; line-height: 1; }
+  .cover-logo .a { background: linear-gradient(90deg, var(--cyan), #67e8f9); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .cover-logo .b { background: linear-gradient(90deg, #c084fc, var(--magenta)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .cover-sub { font-size: 13px; letter-spacing: 6px; color: var(--dim); text-transform: uppercase; margin-top: 10px; }
+  .cover h1 { font-size: 27px; font-weight: 700; margin-top: 42px; text-wrap: balance; }
+  .cover p { color: var(--dim); max-width: 560px; margin: 14px auto 0; }
+
+  /* ---------- toc ---------- */
+  .toc { background: var(--page); border: 1px solid var(--line); border-radius: 14px; padding: 22px 28px; margin-bottom: 60px; }
+  .toc-title { font-size: 11px; letter-spacing: 3px; color: var(--dim); font-weight: 700; margin-bottom: 12px; }
+  .toc ol { list-style: none; counter-reset: toc; columns: 2; column-gap: 40px; }
+  .toc li { counter-increment: toc; break-inside: avoid; }
+  .toc a { color: var(--text); text-decoration: none; display: flex; gap: 12px; padding: 5px 0; align-items: baseline; }
+  .toc a:hover { color: var(--cyan); }
+  .toc a::before { content: counter(toc, decimal-leading-zero); font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: var(--cyan); }
+  @media (max-width: 640px) { .toc ol { columns: 1; } }
+
+  /* ---------- chapters ---------- */
+  .ch { margin: 72px 0 0; }
+  .ch-eyebrow { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .ch-num {
+    font-family: ui-monospace, Consolas, monospace; font-size: 13px; font-weight: 700;
+    color: #06181d; background: linear-gradient(135deg, var(--cyan), #67e8f9);
+    border-radius: 7px; padding: 3px 10px; letter-spacing: 1px;
+  }
+  .ch-eyebrow .rule { flex: 1; height: 1px; background: var(--line); }
+  h2 { font-size: 24px; font-weight: 800; margin-bottom: 16px; text-wrap: balance; }
+  h3 { font-size: 17px; font-weight: 700; margin: 30px 0 10px; color: #a5f3fc; }
+  p + p { margin-top: 12px; }
+  em { color: #e7edf5; font-style: italic; }
+  strong { color: #e7edf5; }
+
+  /* ---------- big idea diagram ---------- */
+  .flow { display: flex; gap: 0; align-items: stretch; margin: 26px 0; flex-wrap: wrap; }
+  .flow-box {
+    flex: 1; min-width: 180px; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 13px; padding: 18px 18px 16px; position: relative;
+  }
+  .flow-box + .flow-arrow { display: flex; align-items: center; padding: 0 10px; color: var(--cyan); font-size: 22px; }
+  .flow-k { font-size: 11px; letter-spacing: 2.5px; font-weight: 800; margin-bottom: 6px; }
+  .flow-box:nth-child(1) .flow-k { color: var(--cyan); }
+  .flow-box:nth-child(3) .flow-k { color: var(--magenta); }
+  .flow-box:nth-child(5) .flow-k { color: var(--green); }
+  .flow-box p { font-size: 13.5px; color: var(--dim); line-height: 1.6; }
+  .flow-box p b { color: var(--text); }
+  @media (max-width: 700px) { .flow { flex-direction: column; } .flow-arrow { transform: rotate(90deg); justify-content: center; padding: 4px 0; } }
+
+  /* ---------- callouts ---------- */
+  .call { border-radius: 12px; padding: 16px 20px; margin: 22px 0; border: 1px solid; font-size: 14.5px; }
+  .call b:first-child { display: block; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; }
+  .call.gb { background: rgba(245,166,35,.07); border-color: rgba(245,166,35,.35); }
+  .call.gb b:first-child { color: var(--amber); }
+  .call.try { background: rgba(34,211,238,.06); border-color: rgba(34,211,238,.3); }
+  .call.try b:first-child { color: var(--cyan); }
+  .call.stuck { background: rgba(232,121,249,.06); border-color: rgba(232,121,249,.3); }
+  .call.stuck b:first-child { color: var(--magenta); }
+
+  /* ---------- steps ---------- */
+  ol.steps { list-style: none; counter-reset: st; margin: 18px 0; }
+  ol.steps > li { counter-increment: st; position: relative; padding: 0 0 16px 52px; }
+  ol.steps > li::before {
+    content: counter(st); position: absolute; left: 0; top: 1px;
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--panel2); border: 1px solid var(--line);
+    font-family: ui-monospace, Consolas, monospace; font-weight: 700; font-size: 14px; color: var(--cyan);
+  }
+  ol.steps > li::after {
+    content: ""; position: absolute; left: 16px; top: 37px; bottom: 2px; width: 1px; background: var(--line);
+  }
+  ol.steps > li:last-child::after { display: none; }
+
+  ul.plain { margin: 12px 0 12px 4px; list-style: none; }
+  ul.plain li { padding-left: 22px; position: relative; margin-bottom: 8px; }
+  ul.plain li::before { content: "▸"; position: absolute; left: 2px; color: var(--cyan); }
+
+  /* ---------- figures ---------- */
+  figure { margin: 24px 0; }
+  figure img {
+    width: 100%; height: auto; display: block; border-radius: 12px;
+    border: 1px solid var(--line); box-shadow: 0 10px 34px rgba(0,0,0,.45);
+  }
+  figure.small img { max-width: 560px; margin: 0 auto; }
+  figcaption { font-size: 13px; color: var(--dim); margin-top: 10px; text-align: center; }
+  figcaption b { color: var(--cyan); font-weight: 600; }
+
+  /* ---------- ui tokens ---------- */
+  kbd {
+    font-family: ui-monospace, Consolas, monospace; font-size: 12.5px;
+    background: var(--panel2); border: 1px solid #33405a; border-bottom-width: 2.5px;
+    border-radius: 6px; padding: 1.5px 8px; color: #a5f3fc; white-space: nowrap;
+  }
+  .ui {
+    display: inline-block; background: var(--panel2); border: 1px solid var(--line);
+    border-radius: 6px; padding: 0 8px; font-size: 13.5px; font-weight: 600; color: #e7edf5; white-space: nowrap;
+  }
+  code {
+    font-family: ui-monospace, Consolas, monospace; font-size: 13px;
+    background: #0b0e15; border: 1px solid var(--line); border-radius: 5px; padding: 1px 7px; color: #a5f3fc;
+  }
+
+  /* ---------- tables ---------- */
+  .tbl-wrap { overflow-x: auto; margin: 18px 0; border: 1px solid var(--line); border-radius: 12px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; background: var(--page); }
+  th { text-align: left; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--dim); padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  td { padding: 11px 16px; border-bottom: 1px solid #1a2130; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td:first-child { white-space: nowrap; color: #e7edf5; font-weight: 600; }
+
+  .foot { margin-top: 80px; text-align: center; color: var(--dim); font-size: 13.5px; border-top: 1px solid var(--line); padding-top: 30px; }
+
+  @media print {
+    body { background: #fff; color: #111; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ============ COVER ============ -->
+  <div class="cover">
+    <div class="cover-logo"><span class="a">GEN</span><span class="b">ENGINE</span></div>
+    <div class="cover-sub">Songbook</div>
+    <h1>How to build a song — from empty rack to finished track</h1>
+    <p>You already know how to place notes. This booklet is about everything <em>around</em> the notes:
+    getting instruments in, understanding tracks, and wiring a few patterns into a full song.</p>
+  </div>
+
+  <div class="toc">
+    <div class="toc-title">CHAPTERS</div>
+    <ol>
+      <li><a href="#idea">The Big Idea</a></li>
+      <li><a href="#ch1">Adding instruments</a></li>
+      <li><a href="#ch2">Patterns — where notes live</a></li>
+      <li><a href="#ch3">Tracks &amp; the Playlist</a></li>
+      <li><a href="#ch4">The Mixer &amp; effects</a></li>
+      <li><a href="#ch5">Automation</a></li>
+      <li><a href="#ch6">Save &amp; export</a></li>
+      <li><a href="#recipe">Your first song in 15 minutes</a></li>
+      <li><a href="#fix">When something's wrong</a></li>
+      <li><a href="#keys">Cheat sheet</a></li>
+    </ol>
+  </div>
+
+  <!-- ============ BIG IDEA ============ -->
+  <section class="ch" id="idea">
+    <div class="ch-eyebrow"><span class="ch-num">CH 01</span><span class="rule"></span></div>
+    <h2>The Big Idea — three layers, one song</h2>
+    <p>Everything in GENENGINE flows through three layers. Once this picture clicks, setup stops being hard:</p>
+
+    <div class="flow">
+      <div class="flow-box">
+        <div class="flow-k">INSTRUMENTS</div>
+        <p>Live in the <b>CHANNELS rack</b>. You add them from the <b>LIBRARY</b>. Each one is a row: a synth, a drum, or one of your samples.</p>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box">
+        <div class="flow-k">PATTERNS</div>
+        <p>Short musical phrases — a drum loop, a bassline, a chord progression. Notes for <b>any instrument</b> can go in <b>any pattern</b>.</p>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box">
+        <div class="flow-k">SONG</div>
+        <p>In the <b>PLAYLIST</b>, you paint patterns onto tracks in time. Repeat them, stack them, arrange them — that's the song.</p>
+      </div>
+    </div>
+
+    <div class="call gb">
+      <b>Coming from GarageBand or Logic?</b>
+      This is the one habit to unlearn: there, a <em>track is an instrument</em> — you add a track, pick a sound, and play into it.
+      Here they're separate. <strong>Instruments live in the rack. Playlist tracks are empty shelves.</strong>
+      A track never "has" an instrument — it just holds pattern clips, and any pattern can sit on any track.
+      So when you think <em>“I want to add a piano”</em>, you're not adding a track — you're adding a <em>channel</em> from the Library.
+    </div>
+  </section>
+
+  <!-- ============ CH 1 ============ -->
+  <section class="ch" id="ch1">
+    <div class="ch-eyebrow"><span class="ch-num">CH 02</span><span class="rule"></span></div>
+    <h2>Adding instruments (the part that was fighting you)</h2>
+
+    <ol class="steps">
+      <li>Press <kbd>F8</kbd> — or click the <span class="ui">📚 LIBRARY</span> tab.</li>
+      <li><strong>Click any card once to hear it.</strong> This is just an audition — nothing is added yet. Browse with the category chips: Bass, Lead, Pluck, Pad, Keys, FX, Drums.</li>
+      <li>Found one you like? <strong>Click the <span class="ui">＋</span> button in the card's top-right corner.</strong> A toast confirms: <em>“＋ added to rack”</em>.</li>
+      <li>Press <kbd>F6</kbd> (<span class="ui">▦ CHANNELS</span>). Your instrument is the <strong>new row at the bottom of the rack</strong>, already selected and ready to play — try the <kbd>Z</kbd>–<kbd>M</kbd> keys.</li>
+    </ol>
+
+    <figure>
+      <img src="img/library-full.png" alt="The Library tab: instrument cards on the left, sample import on the right">
+      <figcaption>The Library. <b>Click a card = hear it.</b> The little <b>＋</b> on the card = add it to your rack.</figcaption>
+    </figure>
+
+    <figure>
+      <img src="img/rack-with-new.png" alt="The channel rack, with a freshly added Crystal Bell channel highlighted at the bottom">
+      <figcaption>After clicking ＋ on “Crystal Bell”: it appears as the <b>bottom row of the CHANNELS rack</b>, selected and outlined.</figcaption>
+    </figure>
+
+    <h3>Anatomy of a channel row</h3>
+    <figure class="small">
+      <img src="img/channel-row.png" alt="One channel row: colored dot, name, three knobs, step buttons">
+      <figcaption>One instrument = one row.</figcaption>
+    </figure>
+    <ul class="plain">
+      <li><strong>Colored dot</strong> — click to mute/unmute. Right-click to <em>solo</em> (hear only this one).</li>
+      <li><strong>Name</strong> — click to <em>select</em> it (your computer keyboard and the on-screen KEYS play the <em>selected</em> channel). <strong>Double-click opens the Piano Roll.</strong> Right-click for the menu: rename, duplicate, delete, clear steps.</li>
+      <li><strong>Three small knobs</strong> — pitch, pan, volume for that instrument.</li>
+      <li><strong>Step buttons</strong> — the 16-per-bar grid you already know. Click to place, drag up/down on a lit step for velocity, right-click to clear.</li>
+    </ul>
+
+    <div class="call try">
+      <b>Try it now — a starter kit in 60 seconds</b>
+      From the Library, add these seven: <em>Kick 909, Clap, Hat Closed, Hat Open</em> (Drums) ·
+      <em>Rolling Trance Bass</em> (Bass) · <em>Trance Pluck</em> (Pluck) · <em>Ethereal Pad</em> (Pad).
+      That's a complete trance toolkit — every song in this booklet can be built from it.
+    </div>
+
+    <h3>Adding your own sounds (GarageBand samples)</h3>
+    <figure class="small">
+      <img src="img/library-samples.png" alt="The sample side of the library: drop zone, import buttons, GarageBand help">
+      <figcaption>The right half of the Library is <b>your</b> collection.</figcaption>
+    </figure>
+    <ol class="steps">
+      <li>On your Mac, double-click <code>Harvest GarageBand Sounds.command</code> once (right-click → Open the first time). It converts everything GarageBand has into <code>Desktop → Music GenEngine → GarageBand Sounds</code>.</li>
+      <li>In the Library's right column, click <span class="ui">Import folder…</span> and pick that folder (or drag files straight onto the drop zone).</li>
+      <li>Each sample gets a row in the list: <span class="ui">▶</span> previews it, <strong><span class="ui">＋ rack</span> turns it into a sampler channel</strong> — playable across the whole keyboard, up and down in pitch, just like any synth.</li>
+    </ol>
+
+    <div class="call stuck">
+      <b>If you hear nothing when auditioning</b>
+      Browsers keep audio locked until your first click anywhere on the page — click once, then audition again.
+      Also check the <span class="ui">MASTER</span> knob (top-right of the transport bar) and your Mac's volume.
+    </div>
+  </section>
+
+  <!-- ============ CH 2 ============ -->
+  <section class="ch" id="ch2">
+    <div class="ch-eyebrow"><span class="ch-num">CH 03</span><span class="rule"></span></div>
+    <h2>Patterns — where notes live</h2>
+    <p>A pattern is a short phrase, usually 1–4 bars: a drum groove, a bassline, a chord pad.
+    You'll write a handful of them, then repeat and combine them into a song.
+    <strong>The golden habit: one job per pattern.</strong> Keep drums in one pattern, bass in another,
+    melody in a third — it makes arranging in the Playlist effortless.</p>
+
+    <figure>
+      <img src="img/pattern-bar.png" alt="The pattern bar: numbered chips, a + button, and the BARS length control">
+      <figcaption>The pattern bar sits above the rack. <b>Click a chip</b> to switch pattern · <b>＋</b> makes a new empty one · <b>right-click a chip</b> to rename, clone, or delete · <b>BARS − / +</b> sets its length.</figcaption>
+    </figure>
+
+    <ul class="plain">
+      <li><strong>Drums</strong> — light up steps in the rack. Kick on 1, 5, 9, 13 is house/trance law.</li>
+      <li><strong>Melodies &amp; bass</strong> — double-click the channel name → Piano Roll. You've got this part already: snap down to 1/64, drag, resize, right-click erase.</li>
+      <li><strong>Switching instruments inside the Piano Roll</strong> — click the colored pill at the top-left of its toolbar to jump between channels without leaving the editor.</li>
+      <li><strong>While it plays</strong> — press <kbd>Space</kbd> in <span class="ui">PAT</span> mode and the current pattern loops while you edit. Click another pattern chip (or press <kbd>1</kbd>–<kbd>9</kbd>) and it queues up to switch at the next loop — live performance, Ableton style.</li>
+    </ul>
+
+    <figure>
+      <img src="img/pianoroll-full.png" alt="Piano roll showing the Anthem melody">
+      <figcaption>The Anthem melody from the demo song, in the Piano Roll.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============ CH 3 ============ -->
+  <section class="ch" id="ch3">
+    <div class="ch-eyebrow"><span class="ch-num">CH 04</span><span class="rule"></span></div>
+    <h2>Tracks &amp; the Playlist — turning patterns into a song</h2>
+    <p>Press <kbd>F5</kbd>. The rows on the left are <strong>tracks</strong> — and here's the answer to the
+    setup confusion: <strong>tracks are empty shelves.</strong> You never “add an instrument to a track.”
+    You paint <em>pattern clips</em> onto them, wherever and however often you like.
+    (Double-click a track's name to rename it — “Drums”, “Bass”, “Leads” — purely for your own tidiness.)</p>
+
+    <ol class="steps">
+      <li>Pick your <strong>BRUSH</strong> — the dropdown in the Playlist toolbar chooses which pattern you're about to paint.</li>
+      <li><strong>Click on empty space</strong> in any track — a clip of that pattern appears, snapped to the bar.</li>
+      <li><strong>Drag its right edge</strong> to stretch it — the pattern repeats inside the clip (you'll see the repeat lines). One 1-bar drum pattern can carry 8 bars with a single clip.</li>
+      <li><strong>Drag the middle</strong> to move it anywhere — any bar, any track. <strong>Right-click erases.</strong> Double-click opens that pattern for editing.</li>
+      <li>Press <kbd>Space</kbd> — the transport is in <span class="ui">SONG</span> mode on this tab, so you hear the arrangement. <em>Shift-drag the ruler</em> to set the loop region; click the ruler to jump.</li>
+    </ol>
+
+    <figure>
+      <img src="img/playlist-toolbar.png" alt="Playlist toolbar with brush selector, automation button, snap and loop controls">
+      <figcaption>The Playlist toolbar: <b>BRUSH</b> picks the pattern, <b>＋ Automation</b> creates a sweep, <b>∞ Loop</b> toggles the loop region.</figcaption>
+    </figure>
+
+    <figure>
+      <img src="img/playlist-full.png" alt="The demo song arranged in the playlist across 24 bars">
+      <figcaption>The demo song's whole arrangement. Read it like a story: intro → build → drop → outro.</figcaption>
+    </figure>
+
+    <div class="call try">
+      <b>The arrangement recipe (steal this)</b>
+      <strong>Intro</strong> (bars 1–8): kick + hats + bass only. ·
+      <strong>Build</strong> (9–16): add pluck and acid, drop a <em>Riser</em> over the last 4 bars. ·
+      <strong>Drop</strong> (17–24): everything at once — lead, pad, full drums. ·
+      <strong>Outro</strong> (25–28): strip back to pad + pluck.
+      Click <span class="ui">🚀 Demo</span> in the top bar and study “First Flight” in the Playlist — it's this exact shape.
+    </div>
+
+    <div class="call gb">
+      <b>PAT vs SONG (the two play modes)</b>
+      <span class="ui">PAT</span> loops the current pattern — your editing mode. <span class="ui">SONG</span> plays the Playlist — your listening mode.
+      Switching tabs picks the sensible one automatically (Channels/Piano Roll → PAT, Playlist → SONG), and you can always override with the toggle in the transport bar.
+      <em>“My song is silent but the pattern plays”</em> is almost always: you're in SONG mode with no clips painted yet.
+    </div>
+  </section>
+
+  <!-- ============ CH 4 ============ -->
+  <section class="ch" id="ch4">
+    <div class="ch-eyebrow"><span class="ch-num">CH 05</span><span class="rule"></span></div>
+    <h2>The Mixer — level, space, character</h2>
+    <p>Press <kbd>F9</kbd>. Every channel gets a strip; click one to select it.</p>
+
+    <figure class="small">
+      <img src="img/mixer-strip.png" alt="A single mixer strip: pan, sends, fader, meter, mute/solo, FX chips">
+      <figcaption>One strip: <b>PAN</b> · <b>REV/DLY</b> send knobs · fader + live meter · <b>M</b>ute / <b>S</b>olo · FX chips.</figcaption>
+    </figure>
+
+    <ul class="plain">
+      <li><strong>Fader</strong> — the channel's level in the mix. Get the kick and bass balanced first; everything else fits around them.</li>
+      <li><strong>REV / DLY knobs</strong> — “sends”: how much of this channel is mailed to the two shared rooms — the <em>Space Verb</em> bus and the <em>Sync Echo</em> bus (their own strips sit to the right of the channels). Pads and plucks love reverb; leads love a touch of both.</li>
+      <li><strong>FX chain</strong> — with a strip selected, use <span class="ui">＋ Add effect…</span> in the right-hand panel: flanger, phaser, crusher, distortion, trance gate, sidechain pump… Click an effect's chip to tweak its knobs, the green dot bypasses it, ▲▼ reorder, ✕ removes. <span class="ui">⛓ Chain preset…</span> drops in a whole combo at once (“Danger Zone”, “Ethereal Space”…).</li>
+    </ul>
+
+    <figure class="small">
+      <img src="img/fx-panel.png" alt="The FX panel showing the chain list and parameter knobs">
+      <figcaption>The FX panel for the selected channel.</figcaption>
+    </figure>
+
+    <div class="call try">
+      <b>The two moves that make it sound like EDM</b>
+      1) Put <em>Sidechain Pump</em> on the bass, pads and leads — <strong>never the kick</strong> — and the whole track breathes in time.
+      2) Put <em>Trance Gate</em> on a sustained pad and draw a pattern in its 16 cells — instant rhythmic shimmer.
+      (The demo's Bass and Anthem channels ship with the pump already on — click them in the Mixer and look.)
+    </div>
+  </section>
+
+  <!-- ============ CH 5 ============ -->
+  <section class="ch" id="ch5">
+    <div class="ch-eyebrow"><span class="ch-num">CH 06</span><span class="rule"></span></div>
+    <h2>Automation — making knobs move by themselves</h2>
+    <ol class="steps">
+      <li>Give the target channel something to sweep — e.g. in the Mixer add a <em>Filter</em> effect to your pluck.</li>
+      <li>In the Playlist toolbar click <span class="ui">＋ Automation</span>. Pick the target (e.g. <em>Pluck · Filter Cutoff</em>) and draw the curve: click to add points, drag to shape, right-click removes.</li>
+      <li>Your automation is now a brush. <strong>Paint it onto any track</strong> like a pattern clip — the curve stretches across the clip's length. An 8-bar clip rising from low to high = the classic filter-sweep build.</li>
+      <li>Double-click an automation clip any time to reshape it.</li>
+    </ol>
+  </section>
+
+  <!-- ============ CH 6 ============ -->
+  <section class="ch" id="ch6">
+    <div class="ch-eyebrow"><span class="ch-num">CH 07</span><span class="rule"></span></div>
+    <h2>Save &amp; export</h2>
+    <figure>
+      <img src="img/topbar.png" alt="The transport bar: play, stop, record, PAT/SONG, BPM, swing, position, visualizer, master, and file buttons">
+      <figcaption>The transport bar. Right side: <b>New · Demo · Open · Save · Export WAV</b>.</figcaption>
+    </figure>
+    <ul class="plain">
+      <li><span class="ui">💾 Save</span> (<kbd>Ctrl+S</kbd>) — writes a <code>.genengine.json</code> project file, samples embedded, fully portable. <span class="ui">📂 Open</span> loads it back. The app also autosaves to the browser every 20 seconds.</li>
+      <li><span class="ui">⬇ Export WAV</span> — renders the finished audio: the whole Playlist song, or just the current pattern. This is the file you share with the world.</li>
+      <li>Working in the hosted preview (the claude.ai link)? Project saves work there, but WAV export needs the downloadable app — save your project in the preview, open it in <code>GenEngine-standalone.html</code>, export there.</li>
+    </ul>
+  </section>
+
+  <!-- ============ RECIPE ============ -->
+  <section class="ch" id="recipe">
+    <div class="ch-eyebrow"><span class="ch-num">CH 08</span><span class="rule"></span></div>
+    <h2>Your first song in 15 minutes — the exact clicks</h2>
+    <ol class="steps">
+      <li><span class="ui">✦ New</span> for an empty project. Drag the <strong>BPM</strong> number to 138.</li>
+      <li><kbd>F8</kbd> Library → add <em>Kick 909, Clap, Hat Closed, Rolling Trance Bass, Trance Pluck, Ethereal Pad</em> (＋ on each card).</li>
+      <li><kbd>F6</kbd> Channels. Pattern 1 is selected. Right-click its chip → Rename → “Drums”.</li>
+      <li><strong>Kick row:</strong> light steps 1, 5, 9, 13. <strong>Clap row:</strong> steps 5 and 13. <strong>Hat row:</strong> steps 3, 7, 11, 15 (the off-beats). Press <kbd>Space</kbd> — that's a beat.</li>
+      <li>Click <span class="ui">＋</span> in the pattern bar → new pattern → rename it “Bass”.</li>
+      <li>Double-click the <strong>Bass</strong> channel name → Piano Roll. Set SNAP to 1/16 and put short A2 notes on every 16th <em>except</em> where the kick lands (skip 1, 5, 9, 13). That off-beat gallop is the rolling trance bass.</li>
+      <li>Pattern <span class="ui">＋</span> again → “Chords”. Double-click <strong>Ethereal Pad</strong> → set BARS to 4 → draw whole-bar chords: A–C–E (bar 1), F–A–C (bar 2), C–E–G (bar 3), G–B–D (bar 4).</li>
+      <li>Pattern <span class="ui">＋</span> once more → “Melody”. On <strong>Trance Pluck</strong>, draw a 1/16 arpeggio bouncing between A3, C4, E4, A4. Turn its <strong>REV</strong> and <strong>DLY</strong> sends up in the Mixer (<kbd>F9</kbd>).</li>
+      <li><kbd>F5</kbd> Playlist. Brush = “Drums” → paint at bar 1, drag its edge out to bar 8.</li>
+      <li>Brush = “Bass” → paint bars 1–8 on the next track.</li>
+      <li>Brush = “Chords” → paint bars 9–16. Also extend Drums and Bass across 9–16.</li>
+      <li>Brush = “Melody” → paint bars 13–16 (let it enter late — anticipation!).</li>
+      <li>In the Mixer, add <em>Sidechain Pump</em> to Bass, Pad and Pluck (⛓ Chain preset → “Sidechain Pump”). Feel it breathe.</li>
+      <li>Shift-drag the Playlist ruler across bars 1–16, press <kbd>Space</kbd>, and listen top to bottom. Nudge faders until kick and bass sit together.</li>
+      <li><span class="ui">💾 Save</span>, then <span class="ui">⬇ Export WAV</span>. You just produced a record. 🎧</li>
+    </ol>
+  </section>
+
+  <!-- ============ TROUBLESHOOTING ============ -->
+  <section class="ch" id="fix">
+    <div class="ch-eyebrow"><span class="ch-num">CH 09</span><span class="rule"></span></div>
+    <h2>When something's wrong</h2>
+    <div class="tbl-wrap"><table>
+      <tr><th>Symptom</th><th>Fix</th></tr>
+      <tr><td>No sound at all</td><td>Click anywhere once (browsers unlock audio on first click). Check the MASTER knob, the tab isn't muted, Mac volume up.</td></tr>
+      <tr><td>“I added an instrument but can't find it”</td><td>It's in <strong>CHANNELS</strong> (<kbd>F6</kbd>), the new row at the bottom of the rack — not in the Playlist. Tracks never show instruments.</td></tr>
+      <tr><td>Keyboard plays the wrong instrument</td><td>Keys always play the <em>selected</em> channel. Click the channel's <strong>name</strong> first (its row lights up).</td></tr>
+      <tr><td>Pattern plays, but SONG is silent</td><td>Nothing is painted in the Playlist yet — notes only make it into the song inside clips. Also check the loop region actually covers your clips.</td></tr>
+      <tr><td>One channel went quiet</td><td>Its mute dot is off, or another channel is <em>soloed</em> (right-click a dot to un-solo), or its volume knob / fader is down.</td></tr>
+      <tr><td>My steps grid is too short</td><td>Raise <strong>BARS +</strong> in the pattern bar — each bar adds 16 steps.</td></tr>
+      <tr><td>A GarageBand file won't import in Chrome</td><td><code>.caf</code> needs converting — run <code>Harvest GarageBand Sounds.command</code>, or use Safari, which reads it natively.</td></tr>
+      <tr><td>“I ruined it”</td><td><kbd>Ctrl+Z</kbd>. Up to 80 steps of undo. Breathe.</td></tr>
+    </table></div>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="ch" id="keys">
+    <div class="ch-eyebrow"><span class="ch-num">CH 10</span><span class="rule"></span></div>
+    <h2>Cheat sheet</h2>
+    <div class="tbl-wrap"><table>
+      <tr><th>Key</th><th>Does</th></tr>
+      <tr><td><kbd>Space</kbd></td><td>Play / pause</td></tr>
+      <tr><td><kbd>F5</kbd> <kbd>F6</kbd> <kbd>F7</kbd> <kbd>F8</kbd> <kbd>F9</kbd></td><td>Playlist · Channels · Piano Roll · Library · Mixer</td></tr>
+      <tr><td><kbd>1</kbd>–<kbd>9</kbd></td><td>Select pattern (queues at the next bar while playing)</td></tr>
+      <tr><td><kbd>Z</kbd>-row / <kbd>Q</kbd>-row</td><td>Play the selected instrument (two octaves) · <kbd>−</kbd>/<kbd>=</kbd> shift octave</td></tr>
+      <tr><td><kbd>●</kbd> + play</td><td>Record your keys into the current pattern</td></tr>
+      <tr><td><kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Y</kbd></td><td>Undo / redo</td></tr>
+      <tr><td><kbd>Ctrl+B</kbd></td><td>Duplicate selected notes (Piano Roll)</td></tr>
+      <tr><td><kbd>S</kbd></td><td>Toggle 303 slide on selected notes</td></tr>
+      <tr><td><kbd>Ctrl+S</kbd> / <kbd>Ctrl+O</kbd></td><td>Save / open project</td></tr>
+    </table></div>
+  </section>
+
+  <div class="foot">
+    ⚡ GENENGINE Songbook · lives in <code>Music GenEngine/docs/</code> ·
+    press <span class="ui">?</span> inside the app for the quick version<br>
+    <em>Bring the music in your heart to the world.</em> 💜
+  </div>
+
+</div>
+</body>
+</html>
