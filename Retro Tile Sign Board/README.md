@@ -181,6 +181,30 @@ with a per-glyph override for the busy ones. Edit a path there and the whole
 board picks it up. If a browser ever cannot parse `Path2D` path data, the
 board falls back to the system face on its own.
 
+## Putting it on a domain
+
+It is one file with nothing beside it, so hosting is a copy: upload
+`index.html` to the web root and open the URL. No build, no server, no
+dependencies, and it makes **no network requests at all** once loaded —
+verified by watching for off-origin traffic while it runs.
+
+Checked served over HTTP as well as opened from disk, on a desktop and an
+iPhone viewport: boots, settles, remembers its settings across a reload, and
+logs nothing.
+
+Two things worth knowing before it goes on a wall:
+
+* **Sound needs one tap.** Browsers will not start audio until the page has
+  been touched, so a display left alone after loading stays silent until
+  someone taps it once. This is a browser rule, not a setting.
+* **Programming is per-device.** Everything you set up lives in that browser's
+  own storage. Opening the same URL on a phone gives you a separate copy, not
+  a remote control for the screen in the other room. Making that work needs
+  somewhere shared to keep the configuration.
+
+On iOS, *Add to Home Screen* runs it without Safari's chrome, which is the
+closest thing to a kiosk without extra software.
+
 ## Display
 
 Built for a desktop screen. The board holds a 16:9 stage and scales to fill
