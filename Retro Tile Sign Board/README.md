@@ -45,9 +45,14 @@ build step, no network, no dependencies.
   strikes and one heavier settle — are baked into the file as WAV data, picked
   at random, pitch-varied per strike, and panned to the column they came from,
   so a cascade is heard to travel across the board as well as seen. They were
-  synthesised offline by `tools/make-clicks.py` (an impact transient plus damped
-  resonant modes, the way a plastic flap hitting a stack actually behaves), so
-  nothing is fetched from the network and no third-party audio is involved.
+  synthesised offline by `tools/make-clicks.py`, so nothing is fetched from the
+  network and no third-party audio is involved. They are modelled on a small
+  dull metal flap rather than a wooden block: the ringing modes sit on
+  **inharmonic** bar-like ratios, which is most of what tells an ear metal from
+  wood, the fundamental sits near 360 Hz, and the contact burst is low-passed
+  with only a trace of bright edge left on top. Measured: a strike is −20 dB
+  down within 24–40 ms with a spectral centroid around 2.1 kHz, against
+  16–23 ms and 4.5 kHz for the wooden version it replaced.
   A full sweep fires around 350 strikes a second, dense enough to read as one
   rattle, with every one of the 132 landings getting through.
 
@@ -161,7 +166,8 @@ time, so a slower machine shows fewer frames rather than a slower board.
 Python standard library, and prints the base64 block to paste over `CLICK_WAV`
 and `THUNK_WAV` in `index.html`. Edit the modal frequencies and decay times in
 `synth()` to change the character of the board — longer decays and lower modes
-give a heavier, more wooden flap.
+give a heavier flap; raising them, or moving the ratios towards whole numbers,
+takes it back towards wood.
 
 ## Notes on the rendering
 
