@@ -103,19 +103,49 @@
   }
   .hint { font-size: 11px; color: #6d6d75; line-height: 1.5; margin-top: 7px; }
 
+  /* The composer is exactly as wide as the board: 22 tiles. Anything past
+     that wraps onto the next visual line and is tinted, so an over-long row
+     is visible where it happens rather than only in a counter. */
+  .msg-outer {
+    font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+    font-size: 13px; line-height: 1.55; letter-spacing: 0;
+    width: calc(22ch + 22px);          /* 22 tiles + padding + border */
+    max-width: 100%;
+  }
+  /* only the layer and the textarea live in here, so `inset: 0` puts one
+     exactly on top of the other */
+  .msg-wrap { position: relative; width: 100%; }
   .ruler {
-    font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
-    font-size: 11px; color: #55555d; letter-spacing: .5px; white-space: pre; overflow: hidden;
-    padding-left: 10px; margin-bottom: 2px;
+    font-family: inherit; font-size: 11px; color: #55555d; letter-spacing: 0;
+    white-space: pre; overflow: hidden; padding-left: 11px; margin-bottom: 2px;
   }
-  textarea#msg {
-    width: 100%; height: 132px; resize: vertical;
+  #msgHL, textarea#msg {
+    font-family: inherit; font-size: inherit; line-height: inherit;
+    letter-spacing: inherit;
+    width: 100%; box-sizing: border-box;
+    padding: 10px; border: 1px solid var(--ui-line); border-radius: 8px;
+    white-space: pre-wrap; overflow-wrap: break-word; word-break: break-word;
+    margin: 0;
+  }
+  #msgHL {
+    position: absolute; inset: 0;
     background: var(--ui-field); color: var(--ui-text);
-    border: 1px solid var(--ui-line); border-radius: 8px; padding: 9px 10px;
-    font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
-    font-size: 13px; line-height: 1.55; letter-spacing: .5px; outline: none;
+    overflow: hidden; pointer-events: none; z-index: 0;
+    border-color: transparent;
   }
+  #msgHL .over { color: #ff6f57; background: rgba(255,96,74,0.13); border-radius: 2px; }
+  textarea#msg {
+    position: relative; z-index: 1;
+    display: block;                     /* no baseline gap under the box */
+    height: 150px; resize: vertical;
+    background: transparent; outline: none;
+    color: transparent;                 /* the text you see is the layer below */
+    caret-color: var(--ui-text);
+  }
+  textarea#msg::selection { background: rgba(104,140,224,0.40); }
+  textarea#msg::placeholder { color: #55555d; }
   textarea#msg:focus { border-color: #4a4a52; }
+  .msg-wrap.over textarea#msg { border-color: #6d3129; }
   #lineMeter { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
   .lm {
     font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 10px;
@@ -278,8 +308,13 @@
     <section class="pane on" id="pane-compose">
       <div class="field">
         <label class="label" for="msg">Message &mdash; 6 rows &times; 22 columns</label>
-        <div class="ruler" id="ruler"></div>
-        <textarea id="msg" spellcheck="false" autocapitalize="characters" placeholder="TYPE ANYTHING&#10;NEW LINE = NEW ROW"></textarea>
+        <div class="msg-outer">
+          <div class="ruler" id="ruler"></div>
+          <div class="msg-wrap" id="msgWrap">
+            <div id="msgHL" aria-hidden="true"></div>
+            <textarea id="msg" spellcheck="false" autocapitalize="characters" placeholder="TYPE ANYTHING&#10;NEW LINE = NEW ROW"></textarea>
+          </div>
+        </div>
         <div id="lineMeter"></div>
         <div class="hint">
           <span class="kbd">&#8984;/Ctrl + Enter</span> sends to the board.
@@ -1415,25 +1450,26 @@ function parseLine(str) {
   const out = [];
   let i = 0;
   while (i < str.length) {
+    const at = i;                       /* where this tile began in the text */
     if (str[i] === '{') {
       const end = str.indexOf('}', i);
       if (end > i) {
         const name = str.slice(i + 1, end).trim().toLowerCase();
         if (Object.prototype.hasOwnProperty.call(COLOUR_TOKENS, name)) {
-          out.push({ code: COLOUR_TOKENS[name], space: false });
+          out.push({ code: COLOUR_TOKENS[name], space: false, at: at });
           i = end + 1; continue;
         }
         if (name === 'deg' || name === 'degree') {
-          out.push({ code: 62, space: false }); i = end + 1; continue;
+          out.push({ code: 62, space: false, at: at }); i = end + 1; continue;
         }
       }
     }
     const raw = str[i];
-    if (raw === ' ' || raw === '\t') { out.push({ code: 0, space: true }); i++; continue; }
+    if (raw === ' ' || raw === '\t') { out.push({ code: 0, space: true, at: at }); i++; continue; }
     const up = raw.toUpperCase();
     const code = CHAR2CODE[up];
-    if (code === undefined) { lastDropped++; out.push({ code: 0, space: true }); }
-    else out.push({ code: code, space: false });
+    if (code === undefined) { lastDropped++; out.push({ code: 0, space: true, at: at }); }
+    else out.push({ code: code, space: false, at: at });
     i++;
   }
   return out;
@@ -1585,6 +1621,34 @@ const msgEl = $('#msg');
   $('#ruler').textContent = s;
 })();
 
+const hlEl = $('#msgHL');
+const wrapEl = $('#msgWrap');
+const escHTML = t => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+/* Mirror the composer's text underneath it, with everything past the
+   twenty-second tile of a row in red. Counting is by tile, not character, so
+   a colour token measures as the one tile it occupies rather than its six
+   characters. */
+function updateHighlight() {
+  const lines = msgEl.value.split('\n');
+  let html = '', anyOver = false;
+  for (let i = 0; i < lines.length; i++) {
+    const ln = lines[i];
+    const units = parseLine(ln);
+    if (units.length > COLS) {
+      anyOver = true;
+      const cut = units[COLS].at;
+      html += escHTML(ln.slice(0, cut)) + '<span class="over">' + escHTML(ln.slice(cut)) + '</span>';
+    } else {
+      html += escHTML(ln);
+    }
+    if (i < lines.length - 1) html += '\n';
+  }
+  hlEl.innerHTML = html + '\n';        /* trailing line so the last row renders */
+  hlEl.scrollTop = msgEl.scrollTop;
+  wrapEl.classList.toggle('over', anyOver);
+}
+
 function updateMeter() {
   const box = $('#lineMeter');
   box.innerHTML = '';
@@ -1592,7 +1656,7 @@ function updateMeter() {
   lines.forEach((ln, i) => {
     const n = parseLine(ln).length;
     const d = document.createElement('div');
-    d.className = 'lm' + (!state.wrap && n > COLS ? ' over' : '');
+    d.className = 'lm' + (n > COLS ? ' over' : '');
     d.textContent = 'R' + (i + 1) + ' ' + n + '/' + COLS;
     box.appendChild(d);
   });
@@ -1616,7 +1680,8 @@ function sendCompose(quiet) {
   }
 }
 
-msgEl.addEventListener('input', () => { state.text = msgEl.value; updateMeter(); });
+msgEl.addEventListener('input', () => { state.text = msgEl.value; updateMeter(); updateHighlight(); });
+msgEl.addEventListener('scroll', () => { hlEl.scrollTop = msgEl.scrollTop; });
 msgEl.addEventListener('keydown', e => {
   if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendCompose(); }
 });
@@ -1651,7 +1716,7 @@ segWire('#wrapSeg', 'wrap', v => state.wrap = v === '1');
       msgEl.selectionStart = msgEl.selectionEnd = s + token.length;
       msgEl.focus();
       state.text = msgEl.value;
-      updateMeter();
+      updateMeter(); updateHighlight();
     });
     box.appendChild(b);
   });
@@ -1692,7 +1757,7 @@ function applyMessage(m) {
   state.text = m.text;
   state.h = m.h || 'center'; state.v = m.v || 'middle';
   state.wrap = m.wrap !== false;
-  syncSegs(); updateMeter();
+  syncSegs(); updateMeter(); updateHighlight();
 }
 function syncSegs() {
   $$('#halignSeg button').forEach(b => b.classList.toggle('on', b.dataset.h === state.h));
@@ -2194,6 +2259,7 @@ fitCanvas();
 msgEl.value = state.text;
 syncUI();
 updateMeter();
+updateHighlight();
 refreshSaved();
 renderPlaylist();
 redrawGrid();
