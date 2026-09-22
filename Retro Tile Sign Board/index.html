@@ -865,6 +865,7 @@ for (let r = 0; r < ROWS; r++) {
       durScale: 1,      /* per-run speed multiplier      */
       friction: 1,      /* this drum's own drag          */
       wobble: 1,        /* and this flap's own           */
+      easeFrom: 22,     /* flaps over which it winds down*/
       spinning: false,
       dirty: false      /* needs one more repaint        */
     });
@@ -891,7 +892,10 @@ const settings = {
    final flap -- and you hear each tile arrive rather than a burst ending. The
    target is an absolute duration, not a multiple of flip speed, so the tail
    lands at the same countable rate whatever speed the board is set to. */
-let EASE_FLAPS = 22;                /* the wind-down runs about two seconds  */
+let EASE_FLAPS = 22;                /* the longest wind-down, in flaps       */
+const EASE_SHARE = 0.45;            /* ...but never more than this much of a
+                                       drum's journey, so every drum gets a
+                                       run at full speed before it slows      */
 let FINAL_FLAP_MS = 167;            /* the last flap: 6 a second             */
 
 /* A hundred and thirty-two drums winding down together still sound like a
@@ -903,11 +907,12 @@ let FINAL_FLAP_MS = 167;            /* the last flap: 6 a second             */
 let TAIL_TILES = 3;                 /* drums that trail the rest      */
 let TAIL_MS = 2600;                 /* how far the last one trails    */
 
-function flapMs(left) {
+function flapMs(left, from) {
   const base = settings.stepMs;
-  if (left > EASE_FLAPS) return base;
+  const span = from || EASE_FLAPS;
+  if (left > span) return base;
   const target = Math.max(base, FINAL_FLAP_MS);
-  const t = (EASE_FLAPS - left + 1) / EASE_FLAPS;   /* 0 -> 1 as it arrives */
+  const t = (span - left + 1) / span;               /* 0 -> 1 as it arrives */
   return base + (target - base) * t * t;
 }
 
@@ -949,6 +954,9 @@ function setBoard(matrix, opts) {
          the same rate; without this the board reads as one sequencer rather
          than as a hundred and thirty-two separate mechanisms */
       tl.friction = 0.90 + Math.random() * 0.20;
+      /* a drum with a short way to go still starts at speed: the wind-down is
+         cut to fit its journey rather than swallowing the whole of it */
+      tl.easeFrom = Math.min(EASE_FLAPS, Math.max(3, Math.round(steps * EASE_SHARE)));
       if (!tl.spinning) {                           /* a mid-flip drum keeps its phase */
         tl.t = 0;
         tl.delay = tileDelay(pattern, r, c);
@@ -1051,7 +1059,7 @@ function step(dt) {
     busy = true;
     if (tl.delay > 0) { tl.delay -= dt; continue; }
 
-    tl.t += dt / (flapMs(tl.left) * tl.friction * tl.wobble * (tl.durScale || 1));
+    tl.t += dt / (flapMs(tl.left, tl.easeFrom) * tl.friction * tl.wobble * (tl.durScale || 1));
 
     while (tl.t >= 1) {
       tl.t -= 1;

@@ -63,6 +63,9 @@ build step, no network, no dependencies.
   when a change starts, and no single flap takes quite the same time as the
   last, so the board spans about a 22 per cent spread between its slowest and
   fastest drum. Without it 132 tiles move as one machine.
+* The wind-down is **sized to each drum's own journey**, never more than about
+  half of it. A drum with only a few flaps to travel would otherwise spend its
+  whole trip inside the deceleration and never run at speed at all.
 * Each drum runs at **20 clicks a second** at speed and **winds down over its
   last 22 flaps — about two seconds — to 6 a second**, so a change ends on
   clicks you can count rather than a burst cutting off. A few drums are held
