@@ -561,6 +561,142 @@ const CHAR2CODE = (function () {
   m['*'] = 46; m['\\'] = 59; m['|'] = 59;
   return m;
 })();
+/* ---------------------------------------------------------------------------
+   SPLIT-FLAP FACE
+   A monoline condensed grotesque, drawn as stroked skeletons rather than
+   outlines -- which is what the mechanical boards actually carry, and what
+   survives being cut in half by the seam.
+
+   Design grid, in units:
+     cap box   x 12..88, y 14..126   (centre 50, 70)
+     crossbar  y 58      -- deliberately above the seam at y 70, so the split
+                            does not swallow the bar of E, F, H and friends
+     stroke    24 units, overridable per glyph with `lw`
+   Glyphs are centred on x 50, so no advance widths are needed: each one sits
+   in its own tile.
+   ------------------------------------------------------------------------- */
+const GLYPHS = {
+  A: { d: 'M12 126L50 14L88 126M26 86L74 86' },
+  B: { d: 'M14 14L14 126M14 14L56 14Q84 14 84 36Q84 58 56 58L14 58M14 58L60 58Q88 58 88 92Q88 126 60 126L14 126' },
+  C: { d: 'M84 36Q72 14 50 14Q14 14 14 70Q14 126 50 126Q72 126 84 104' },
+  D: { d: 'M14 14L14 126M14 14L50 14Q88 14 88 70Q88 126 50 126L14 126' },
+  E: { d: 'M86 14L14 14L14 126L86 126M14 58L72 58' },
+  F: { d: 'M86 14L14 14L14 126M14 58L72 58' },
+  G: { d: 'M84 36Q72 14 50 14Q14 14 14 70Q14 126 50 126Q86 126 86 96L86 78L58 78' },
+  H: { d: 'M14 14L14 126M86 14L86 126M14 58L86 58' },
+  I: { d: 'M50 14L50 126' },
+  J: { d: 'M72 14L72 98Q72 126 46 126Q20 126 20 102' },
+  K: { d: 'M14 14L14 126M86 14L16 74M42 56L88 126' },
+  L: { d: 'M14 14L14 126L86 126' },
+  M: { d: 'M12 126L12 14L50 82L88 14L88 126' },
+  N: { d: 'M14 126L14 14L86 126L86 14' },
+  O: { d: 'M14 70Q14 14 50 14Q86 14 86 70Q86 126 50 126Q14 126 14 70Z' },
+  P: { d: 'M14 126L14 14L56 14Q86 14 86 46Q86 78 56 78L14 78' },
+  Q: { d: 'M14 70Q14 14 50 14Q86 14 86 70Q86 126 50 126Q14 126 14 70ZM60 94L90 134' },
+  R: { d: 'M14 126L14 14L56 14Q86 14 86 44Q86 74 56 74L14 74M50 74L88 126' },
+  S: { d: 'M84 38Q84 14 50 14Q16 14 16 42Q16 64 50 70Q84 76 84 98Q84 126 50 126Q16 126 16 102' },
+  T: { d: 'M12 14L88 14M50 14L50 126' },
+  U: { d: 'M14 14L14 96Q14 126 50 126Q86 126 86 96L86 14' },
+  V: { d: 'M12 14L50 126L88 14' },
+  W: { d: 'M10 14L28 126L50 44L72 126L90 14' },
+  X: { d: 'M14 14L86 126M86 14L14 126' },
+  Y: { d: 'M14 14L50 68L86 14M50 68L50 126' },
+  Z: { d: 'M14 14L86 14L14 126L86 126' },
+
+  '0': { d: 'M16 70Q16 14 50 14Q84 14 84 70Q84 126 50 126Q16 126 16 70Z' },
+  '1': { d: 'M26 38L52 14L52 126' },
+  '2': { d: 'M18 40Q18 14 50 14Q84 14 84 46Q84 72 18 126L86 126' },
+  '3': { d: 'M18 34Q24 14 52 14Q84 14 84 40Q84 62 54 62Q86 62 86 94Q86 126 52 126Q20 126 16 104' },
+  '4': { d: 'M64 126L64 14L12 90L90 90' },
+  '5': { d: 'M84 14L26 14L20 60Q38 52 54 54Q86 58 86 92Q86 126 52 126Q20 126 16 106' },
+  '6': { d: 'M78 28Q68 14 50 14Q16 14 16 76Q16 126 52 126Q86 126 86 96Q86 66 54 66Q24 66 18 90' },
+  '7': { d: 'M14 14L86 14L44 126' },
+  '8': { d: 'M50 14Q20 14 20 42Q20 64 50 68Q80 72 80 98Q80 126 50 126Q20 126 20 98Q20 72 50 68Q80 64 80 42Q80 14 50 14Z' },
+  '9': { d: 'M22 112Q32 126 50 126Q84 126 84 64Q84 14 50 14Q16 14 16 44Q16 74 50 74Q78 74 82 50' },
+
+  '!': { d: 'M50 14L50 88', dots: [[50, 116, 12]] },
+  '@': { d: 'M80 102Q68 114 50 114Q12 114 12 68Q12 22 52 22Q90 22 90 64Q90 84 76 84Q64 84 64 66Q64 50 50 50Q36 50 36 68Q36 86 50 86Q60 86 64 78', lw: 11 },
+  '#': { d: 'M34 24L24 116M64 24L54 116M14 50L84 50M12 86L82 86', lw: 18 },
+  '$': { d: 'M50 4L50 136M80 36Q80 18 50 18Q20 18 20 44Q20 66 50 70Q80 74 80 96Q80 122 50 122Q20 122 20 104', lw: 20 },
+  '(': { d: 'M64 12Q34 40 34 70Q34 100 64 128' },
+  ')': { d: 'M36 12Q66 40 66 70Q66 100 36 128' },
+  '-': { d: 'M22 58L78 58' },
+  '+': { d: 'M50 28L50 100M20 64L80 64' },
+  '&': { d: 'M88 124L30 44Q24 20 52 20Q78 20 78 44Q78 62 50 76Q20 90 20 106Q20 126 48 126Q74 126 86 106', lw: 18 },
+  '=': { d: 'M18 50L82 50M18 86L82 86' },
+  ';': { d: 'M56 110Q56 126 42 136', lw: 20, dots: [[50, 62, 11], [50, 104, 11]] },
+  ':': { dots: [[50, 52, 12], [50, 106, 12]] },
+  "'": { d: 'M50 14L50 46' },
+  '"': { d: 'M36 14L36 46M64 14L64 46' },
+  '%': { d: 'M82 16L18 124M42 36a17 17 0 1 1-34 0a17 17 0 1 1 34 0M93 104a17 17 0 1 1-34 0a17 17 0 1 1 34 0', lw: 12 },
+  ',': { d: 'M54 114Q54 130 42 140', lw: 20, dots: [[50, 110, 11]] },
+  '.': { dots: [[50, 112, 12]] },
+  '/': { d: 'M18 130L82 10' },
+  '?': { d: 'M18 40Q18 14 50 14Q82 14 82 42Q82 62 58 74Q50 78 50 92', dots: [[50, 118, 12]] },
+  '°': { d: 'M68 32a18 18 0 1 1-36 0a18 18 0 1 1 36 0', lw: 14 }
+};
+
+/* Path2D parses SVG path data in every browser that matters; if it ever does
+   not, the board quietly falls back to the system face. */
+const HAS_PATH2D = (function () {
+  try { return typeof Path2D === 'function' && !!new Path2D('M0 0L1 1'); }
+  catch (e) { return false; }
+})();
+const GLYPH_CAP = 0.52;               /* cap height as a fraction of tile height */
+const INK = '#EFEDE6';
+const glyphPaths = Object.create(null);
+
+function glyphPath(ch) {
+  if (!(ch in glyphPaths)) {
+    const spec = GLYPHS[ch];
+    let path = null;
+    if (spec && spec.d && HAS_PATH2D) {
+      try { path = new Path2D(spec.d); } catch (e) { path = null; }
+    }
+    glyphPaths[ch] = path;
+  }
+  return glyphPaths[ch];
+}
+
+function drawGlyph(g, ch, w, h) {
+  const spec = HAS_PATH2D ? GLYPHS[ch] : null;
+  if (!spec) {                        /* nothing drawn for this one: use the system face */
+    const fs = h * 0.625;
+    g.font = '600 ' + fs + 'px "Helvetica Neue", Helvetica, Arial, sans-serif';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.save();
+    g.translate(w / 2, h / 2);
+    g.scale(0.94, 1);
+    g.fillStyle = INK;
+    g.fillText(ch, 0, 0);
+    g.restore();
+    return;
+  }
+  const s = (h * GLYPH_CAP) / 112;    /* the design cap box is 112 units tall */
+  g.save();
+  g.translate(w / 2, h / 2);
+  g.scale(s, s);
+  g.translate(-50, -70);              /* design centre */
+  g.strokeStyle = INK;
+  g.fillStyle = INK;
+  g.lineWidth = spec.lw || 24;
+  g.lineCap = 'butt';
+  g.lineJoin = 'miter';
+  g.miterLimit = 2;                   /* acute joins bevel: a flat-cut apex, not a spike */
+  const path = glyphPath(ch);
+  if (path) g.stroke(path);
+  if (spec.dots) {
+    for (let i = 0; i < spec.dots.length; i++) {
+      const d = spec.dots[i];
+      g.beginPath();
+      g.arc(d[0], d[1], d[2], 0, Math.PI * 2);
+      g.fill();
+    }
+  }
+  g.restore();
+}
+
 const COLOUR_TOKENS = { red: 63, orange: 64, yellow: 65, green: 66, blue: 67,
                         violet: 68, purple: 68, white: 69, black: 70,
                         filled: 71, fill: 71, blank: 0, space: 0 };
@@ -570,13 +706,14 @@ const COLOUR_TOKENS = { red: 63, orange: 64, yellow: 65, green: 66, blue: 67,
    ------------------------------------------------------------------------- */
 const STAGE_W = 1920, STAGE_H = 1080;
 const COLS = 22, ROWS = 6;
-const GAP    = 4;                                   /* between tiles          */
+const GAP_X  = 4;                                   /* between columns        */
+const GAP_Y  = 10;                                  /* between rows           */
 const FRAME  = 26;                                  /* enclosure thickness    */
 const MARGIN = 46;                                  /* stage edge -> tiles    */
-const TILE_W = (STAGE_W - MARGIN * 2 - GAP * (COLS - 1)) / COLS;
+const TILE_W = (STAGE_W - MARGIN * 2 - GAP_X * (COLS - 1)) / COLS;
 const TILE_H = TILE_W * 1.42;
-const BOARD_W = COLS * TILE_W + (COLS - 1) * GAP;
-const BOARD_H = ROWS * TILE_H + (ROWS - 1) * GAP;
+const BOARD_W = COLS * TILE_W + (COLS - 1) * GAP_X;
+const BOARD_H = ROWS * TILE_H + (ROWS - 1) * GAP_Y;
 const BOARD_X = (STAGE_W - BOARD_W) / 2;
 const BOARD_Y = (STAGE_H - BOARD_H) / 2;
 const RADIUS  = TILE_W * 0.085;
@@ -597,8 +734,8 @@ let CELL_W = 0, CELL_H = 0;  /* atlas cell, identical to DW x DH  */
 /* Tile positions in whole device pixels. Blitting a cell 1:1 onto an integer
    position is a straight copy; letting the canvas resample a 2x atlas down to
    tile size cost six times as much per frame and came out softer. */
-const dTileX = c => Math.round((BOARD_X + c * (TILE_W + GAP)) * SC);
-const dTileY = r => Math.round((BOARD_Y + r * (TILE_H + GAP)) * SC);
+const dTileX = c => Math.round((BOARD_X + c * (TILE_W + GAP_X)) * SC);
+const dTileY = r => Math.round((BOARD_Y + r * (TILE_H + GAP_Y)) * SC);
 
 function roundRect(ctx, x, y, w, h, r) {
   if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); return; }
@@ -679,18 +816,7 @@ function drawFlapCell(g, spec, w, h, sc) {
   g.fillRect(w - rail - sc, 0, sc, h);
 
   /* --- glyph ----------------------------------------------------------- */
-  if (spec.kind === 'char') {
-    const fs = h * 0.625;
-    g.font = '600 ' + fs + 'px "Helvetica Neue", Helvetica, Arial, sans-serif';
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    g.save();
-    g.translate(w / 2, mid + fs * 0.015);
-    g.scale(0.94, 1);                               /* condensed, like the original */
-    g.fillStyle = '#EFEDE6';
-    g.fillText(spec.ch, 0, 0);
-    g.restore();
-  }
+  if (spec.kind === 'char') drawGlyph(g, spec.ch, w, h);
 
   /* --- the split: a hard shadow line where the two halves meet --------- */
   const seam = Math.max(1.5, h * 0.012);

@@ -11,7 +11,8 @@ build step, no network, no dependencies.
 
 ## The board
 
-* **6 rows × 22 columns** — 132 independent drums.
+* **6 rows × 22 columns** — 132 independent drums, set 4 units apart across
+  and 10 down so the rows read as separate courses rather than one block.
 * **1920 × 1080** fixed design stage on pure black, scaled to fit whatever
   screen it lands on.
 * Every drum carries the full **72-flap character set**: blanks, `A–Z`, `0–9`,
@@ -114,6 +115,29 @@ software at the right physical size (6.4″ × 3.6″) rather than at 72 DPI.
 | `W` | wipe the board away and back |
 | `P` | start/stop the rotation |
 | `⌘/Ctrl + Enter` | send, from the compose box |
+
+## The typeface
+
+The characters are not a system font. They are a **monoline condensed
+grotesque drawn for this board**, 56 glyphs authored as stroked skeletons on a
+fixed grid and rendered as vector paths, which is what the mechanical boards
+carry and what survives being cut in half by the seam.
+
+Two decisions are worth knowing about:
+
+* The crossbars of `E`, `F` and `H` sit **above** the seam rather than on it.
+  A bar landing exactly on the split disappears into it, so the face puts them
+  clear — which is what gives split-flap lettering its slightly top-heavy
+  look.
+* Acute joins **bevel rather than mitre**, so `A`, `M`, `N`, `V` and `W` get a
+  flat-cut apex instead of a long spike. That is correct for a condensed
+  grotesque at this weight, and it is what the joins would do in metal.
+
+Each glyph lives in `GLYPHS` in `index.html` as SVG path data on a 100 × 140
+unit grid: cap box `x 12..88, y 14..126`, crossbar at `y 58`, stroke 24 units
+with a per-glyph override for the busy ones. Edit a path there and the whole
+board picks it up. If a browser ever cannot parse `Path2D` path data, the
+board falls back to the system face on its own.
 
 ## Display
 
