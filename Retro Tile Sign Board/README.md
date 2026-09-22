@@ -110,6 +110,17 @@ in one sequence.
 
 Clock mode puts the time on the board and re-flips it as the minute turns.
 
+**Times** — a time-of-day schedule. Each rule is a time, a set of weekdays and
+something to show, which can be a typed message or a board painted in the Grid.
+Rules can be switched off individually without deleting them, and the panel
+says what fires next.
+
+Times follow the machine's own clock. When the page opens, whichever rule most
+recently passed goes straight up — so a display that reboots at four in the
+afternoon comes back to the afternoon board rather than to whatever it had
+before it went down. Turning the schedule on turns clock mode off, and
+starting a rotation is independent of it; a rule firing stops the rotation.
+
 **Settings** — flip speed, transition pattern and spread, the two wipes, volume,
 sound, the startup self-test, whether every tile turns on a change, 2×
 rendering, the enclosure, and PNG export.

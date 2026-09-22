@@ -10,6 +10,7 @@
 <style>
   *, *::before, *::after { box-sizing: border-box; }
   :root {
+    color-scheme: dark;                /* native controls follow the dark panel */
     --ui-bg: rgba(16,16,18,0.94);
     --ui-line: #2b2b30;
     --ui-line-soft: #202024;
@@ -242,6 +243,41 @@
   .ic:hover { color: var(--ui-text); }
   .ic.del:hover { color: #ff7d6b; }
 
+  /* schedule */
+  .sch-item {
+    display: flex; flex-direction: column; gap: 7px; background: #16161a;
+    border: 1px solid var(--ui-line-soft); border-radius: 8px; padding: 9px 10px; margin-bottom: 6px;
+  }
+  .sch-item.next { border-color: var(--ui-accent); background: rgba(216,171,58,0.07); }
+  .sch-item.off { opacity: .45; }
+  .sch-top { display: flex; align-items: center; gap: 8px; }
+  .sch-time {
+    /* wide enough for a 12-hour clock with its AM/PM, which is what iOS shows */
+    width: 116px; min-width: 116px;
+    font-family: "SF Mono", ui-monospace, Menlo, monospace;
+    font-size: 13px; padding: 5px 7px;
+  }
+  input[type=time] {
+    background: var(--ui-field); color: var(--ui-text);
+    border: 1px solid var(--ui-line); border-radius: 7px;
+    font-family: inherit; outline: none;
+  }
+  input[type=time]:focus { border-color: #4a4a52; }
+  input[type=time]::-webkit-calendar-picker-indicator { filter: invert(0.8); opacity: .55; }
+  input[type=time]::-webkit-datetime-edit { color: var(--ui-text); }
+  .sch-item .t {
+    flex: 1; font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 11px;
+    color: #c9c8c4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .days { display: flex; gap: 3px; flex-wrap: wrap; }
+  .day {
+    width: 26px; height: 24px; border-radius: 5px; cursor: pointer; padding: 0;
+    background: #1b1b1f; border: 1px solid var(--ui-line-soft);
+    color: var(--ui-dim); font-size: 10px; font-family: inherit;
+  }
+  .day.on { background: var(--ui-accent-dim); border-color: var(--ui-accent); color: var(--ui-accent); }
+  .day:hover { border-color: #4a4a52; }
+
   /* settings */
   input[type=range] { width: 100%; accent-color: var(--ui-accent); background: transparent; }
   .sw-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--ui-line-soft); }
@@ -299,6 +335,7 @@
     <button class="tab on" data-pane="compose">Compose</button>
     <button class="tab" data-pane="grid">Grid</button>
     <button class="tab" data-pane="play">Playlist</button>
+    <button class="tab" data-pane="sched">Times</button>
     <button class="tab" data-pane="set">Settings</button>
   </div>
 
@@ -444,6 +481,30 @@
         </div>
         <input type="text" id="clockTmpl" value="{time}" style="width:100%;margin-top:8px" placeholder="e.g. IT IS {time} ON {day}">
         <div class="hint">Clock mode overrides the rotation while it is on.</div>
+      </div>
+    </section>
+
+    <!-- ============ SCHEDULE ============ -->
+    <section class="pane" id="pane-sched">
+      <div class="sw-row">
+        <div><div class="n">Time of day</div><div class="d">Put a board up at a set time, on chosen days</div></div>
+        <div class="toggle" id="schedTog"></div>
+      </div>
+
+      <div class="field" style="margin-top:14px">
+        <label class="label">Rules</label>
+        <div id="schedList"></div>
+        <div class="row" style="margin-top:8px">
+          <button class="btn sm" id="schedAddMsg">Add current message</button>
+          <button class="btn sm" id="schedAddBoard">Add current board</button>
+          <button class="btn sm" id="schedClear">Clear</button>
+        </div>
+        <div class="hint" id="schedNext"></div>
+        <div class="hint">
+          Times are your computer's local clock. A rule with no days set never
+          fires. When the page opens, whichever rule most recently passed goes
+          up, so a display that reboots comes back to the right board.
+        </div>
       </div>
     </section>
 
@@ -1561,6 +1622,7 @@ const state = {
   saved: {},                 /* name -> {text,h,v,wrap}     */
   playlist: [],              /* [{text,h,v,wrap}]           */
   plSec: 30, plShuffle: false, plLoop: true,
+  schedule: [], schedOn: false,
   clock: false, clockStyle: 'big', clockTmpl: '{time}'
 };
 
@@ -1578,6 +1640,9 @@ function load() {
     if (o && o.state) Object.assign(state, o.state);
     if (o && o.settings) Object.assign(settings, o.settings);
     if (!Array.isArray(state.playlist)) state.playlist = [];
+    if (!Array.isArray(state.schedule)) state.schedule = [];
+    state.schedule = state.schedule.filter(r => r && typeof r.time === 'string' && r.entry);
+    state.schedule.forEach(r => { if (!Array.isArray(r.days)) r.days = [0,1,2,3,4,5,6]; });
     state.playlist = state.playlist.filter(m => m && (typeof m.text === 'string' || Array.isArray(m.matrix)));
     state.playlist.forEach(m => { if (!(+m.secs >= 1)) m.secs = state.plSec; });
   } catch (e) { /* ignore a corrupt payload and start fresh */ }
@@ -2089,6 +2154,203 @@ $('#plSec').addEventListener('input', e => {
 togWire('#plShuffle', () => state.plShuffle, v => state.plShuffle = v);
 togWire('#plLoop', () => state.plLoop !== false, v => state.plLoop = v);
 
+/* ---------------------------------------------------------------------------
+   Time of day
+   A rule is a time, a set of weekdays and something to show -- the same shape
+   a sequence entry has, so a rule can be a typed message or a painted board.
+   ------------------------------------------------------------------------- */
+const DAY_NAMES = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const DAY_FULL  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+let schedTimer = null, schedFired = '';
+
+const pad2 = n => (n < 10 ? '0' : '') + n;
+const hhmmOf = d => pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+
+function schedMinutes(t) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(t || '');
+  return m ? (+m[1]) * 60 + (+m[2]) : -1;
+}
+
+/* the rule that should be on screen at `now`, or null: the latest one today
+   that has already passed, so a display coming back up lands on the right
+   board rather than whatever it had before */
+function ruleDueAt(now) {
+  const day = now.getDay(), mins = now.getHours() * 60 + now.getMinutes();
+  let best = null, bestMins = -1;
+  state.schedule.forEach((r, i) => {
+    if (r.on === false) return;
+    if (!r.days || r.days.indexOf(day) < 0) return;
+    const m = schedMinutes(r.time);
+    if (m < 0 || m > mins) return;
+    if (m >= bestMins) { bestMins = m; best = { rule: r, index: i }; }
+  });
+  return best;
+}
+
+/* when the next rule fires, for the readout */
+function nextRuleAfter(now) {
+  const mins = now.getHours() * 60 + now.getMinutes();
+  let best = null;
+  for (let ahead = 0; ahead < 8; ahead++) {
+    const day = (now.getDay() + ahead) % 7;
+    state.schedule.forEach((r, i) => {
+      if (r.on === false) return;
+      if (!r.days || r.days.indexOf(day) < 0) return;
+      const m = schedMinutes(r.time);
+      if (m < 0) return;
+      if (ahead === 0 && m <= mins) return;
+      const at = ahead * 1440 + m;
+      if (!best || at < best.at) best = { at: at, ahead: ahead, rule: r, index: i };
+    });
+    if (best) break;
+  }
+  return best;
+}
+
+function runRule(r, index, now) {
+  stopRotation();
+  stopSequence();
+  setBoard(entryMatrix(r.entry));
+  schedFired = now.toDateString() + ' ' + hhmmOf(now) + '#' + index;
+  renderSchedule();
+}
+
+function schedTick(now) {
+  if (!state.schedOn || !state.schedule.length) return;
+  const d = now || new Date();
+  const hhmm = hhmmOf(d), day = d.getDay();
+  for (let i = 0; i < state.schedule.length; i++) {
+    const r = state.schedule[i];
+    if (r.on === false) continue;
+    if (!r.days || r.days.indexOf(day) < 0) continue;
+    if (r.time !== hhmm) continue;
+    const key = d.toDateString() + ' ' + hhmm + '#' + i;
+    if (schedFired === key) return;
+    runRule(r, i, d);
+    return;
+  }
+  renderSchedule();
+}
+
+/* on open, catch up to whatever should already be showing */
+function schedCatchUp() {
+  if (!state.schedOn) return;
+  const now = new Date();
+  const due = ruleDueAt(now);
+  if (due) runRule(due.rule, due.index, now);
+  else renderSchedule();
+}
+
+function setSchedule(on) {
+  state.schedOn = on;
+  clearInterval(schedTimer);
+  schedTimer = null;
+  if (on) {
+    if (state.clock) setClock(false);
+    schedCatchUp();
+    schedTimer = setInterval(() => schedTick(), 15000);
+  }
+  renderSchedule();
+  save();
+}
+
+function renderSchedule() {
+  const box = $('#schedList');
+  if (!box) return;
+  box.innerHTML = '';
+  const now = new Date();
+  const due = state.schedOn ? ruleDueAt(now) : null;
+  const next = nextRuleAfter(now);
+
+  if (!state.schedule.length) {
+    box.innerHTML = '<div class="hint">No rules yet. Compose a message or paint a board, then add it here with a time.</div>';
+  }
+
+  state.schedule.forEach((r, i) => {
+    const row = document.createElement('div');
+    row.className = 'sch-item' + (due && due.index === i ? ' next' : '') + (r.on === false ? ' off' : '');
+
+    const top = document.createElement('div');
+    top.className = 'sch-top';
+    const time = document.createElement('input');
+    time.type = 'time'; time.className = 'sch-time'; time.value = r.time;
+    time.addEventListener('change', () => {
+      const v = /^\d{1,2}:\d{2}$/.test(time.value) ? time.value : r.time;
+      r.time = v; time.value = v; save(); renderSchedule();
+    });
+    const label = document.createElement('div');
+    label.className = 't';
+    label.textContent = entryLabel(r.entry).slice(0, 60);
+    top.appendChild(time); top.appendChild(label);
+
+    const mk = (glyph, title, cls, fn) => {
+      const b = document.createElement('button');
+      b.className = 'ic' + (cls ? ' ' + cls : '');
+      b.textContent = glyph; b.title = title;
+      b.addEventListener('click', fn);
+      top.appendChild(b);
+    };
+    mk(r.on === false ? '\u25cb' : '\u25cf', r.on === false ? 'Rule is off' : 'Rule is on', '', () => {
+      r.on = r.on === false; save(); renderSchedule();
+    });
+    mk('▶', 'Show it now', '', () => { stopRotation(); stopSequence(); setBoard(entryMatrix(r.entry)); });
+    mk('✎', entryIsBoard(r.entry) ? 'Load into the Grid' : 'Load into Compose', '', () => {
+      if (entryIsBoard(r.entry)) {
+        gridBuf = r.entry.matrix.map(x => x.slice());
+        redrawGrid(); showTab('grid', false);
+      } else {
+        applyMessage(r.entry); showTab('compose');
+      }
+    });
+    mk('×', 'Remove', 'del', () => { state.schedule.splice(i, 1); save(); renderSchedule(); });
+    row.appendChild(top);
+
+    const days = document.createElement('div');
+    days.className = 'days';
+    for (let d = 0; d < 7; d++) {
+      const b = document.createElement('button');
+      b.className = 'day' + (r.days.indexOf(d) >= 0 ? ' on' : '');
+      b.textContent = DAY_NAMES[d];
+      b.title = DAY_FULL[d];
+      b.addEventListener('click', () => {
+        const at = r.days.indexOf(d);
+        if (at >= 0) r.days.splice(at, 1); else r.days.push(d);
+        r.days.sort();
+        save(); renderSchedule();
+      });
+      days.appendChild(b);
+    }
+    row.appendChild(days);
+    box.appendChild(row);
+  });
+
+  const out = $('#schedNext');
+  if (!state.schedOn) out.textContent = 'Schedule is off.';
+  else if (!next) out.textContent = 'No rule will fire \u2014 check the days.';
+  else {
+    const when = next.ahead === 0 ? 'today' : next.ahead === 1 ? 'tomorrow' : 'on ' + DAY_FULL[(now.getDay() + next.ahead) % 7];
+    out.textContent = 'Next: ' + next.rule.time + ' ' + when + ' \u2014 ' + entryLabel(next.rule.entry).slice(0, 40);
+  }
+}
+
+function addRule(entry) {
+  const now = new Date();
+  state.schedule.push({ time: hhmmOf(now), days: [0,1,2,3,4,5,6], entry: entry, on: true });
+  state.schedule.sort((a, b) => schedMinutes(a.time) - schedMinutes(b.time));
+  save(); renderSchedule();
+  toast('Rule added at ' + hhmmOf(now));
+}
+
+$('#schedAddMsg').addEventListener('click', () =>
+  addRule({ text: msgEl.value, h: state.h, v: state.v, wrap: state.wrap }));
+$('#schedAddBoard').addEventListener('click', () =>
+  addRule({ matrix: currentMatrix() }));
+$('#schedClear').addEventListener('click', () => {
+  if (state.schedule.length && !confirm('Remove all ' + state.schedule.length + ' rules?')) return;
+  state.schedule = []; save(); renderSchedule();
+});
+togWire('#schedTog', () => state.schedOn, setSchedule);
+
 /* clock */
 let clockTimer = null, clockLast = '';
 function clockText() {
@@ -2105,6 +2367,7 @@ function tickClock() {
   setBoard(res.matrix);
 }
 function setClock(on) {
+  if (on && state.schedOn) setSchedule(false);
   state.clock = on;
   clearInterval(clockTimer);
   clockLast = '';
@@ -2190,6 +2453,7 @@ function syncUI() {
   $('#clockStyle').value = state.clockStyle;
   $('#clockTmpl').value = state.clockTmpl;
   $('#clockTog').classList.toggle('on', !!state.clock);
+  $('#schedTog').classList.toggle('on', !!state.schedOn);
   syncSegs();
 }
 
@@ -2302,12 +2566,14 @@ updateMeter();
 updateHighlight();
 refreshSaved();
 renderPlaylist();
+renderSchedule();
 redrawGrid();
 audio.setVolume(settings.volume);
 poke();
 
 /* first flip: start from blank and let the drums run up to the message */
 setTimeout(() => {
+  if (state.schedOn) { setSchedule(true); return; }
   if (state.clock) { setClock(true); return; }
   const res = layoutMessage(state.text, state);
   if (settings.boot) bootCascade(res.matrix);
