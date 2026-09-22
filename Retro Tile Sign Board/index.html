@@ -382,6 +382,7 @@
       </div>
       <div class="field row">
         <button class="btn primary" id="gridSend">Send to board</button>
+        <button class="btn" id="gridAdd">Add to sequence</button>
         <button class="btn" id="gridPull">Read board</button>
         <button class="btn" id="gridFill">Fill all</button>
         <button class="btn" id="gridClear">Clear</button>
@@ -402,11 +403,13 @@
         <div id="plList"></div>
         <div class="row" style="margin-top:8px">
           <button class="btn sm" id="plAdd">Add current message</button>
+          <button class="btn sm" id="plAddBoard">Add current board</button>
           <button class="btn sm" id="plClear">Clear list</button>
         </div>
         <div class="hint">
-          Each entry holds for its own number of seconds. &#9654; jumps to it,
-          &#9998; loads it into Compose to edit, the arrows reorder it.
+          Entries can be typed messages or boards painted in the Grid, mixed
+          freely. Each holds for its own number of seconds. &#9654; jumps to it,
+          &#9998; opens it for editing, the arrows reorder it.
         </div>
       </div>
 
@@ -1575,7 +1578,7 @@ function load() {
     if (o && o.state) Object.assign(state, o.state);
     if (o && o.settings) Object.assign(settings, o.settings);
     if (!Array.isArray(state.playlist)) state.playlist = [];
-    state.playlist = state.playlist.filter(m => m && typeof m.text === 'string');
+    state.playlist = state.playlist.filter(m => m && (typeof m.text === 'string' || Array.isArray(m.matrix)));
     state.playlist.forEach(m => { if (!(+m.secs >= 1)) m.secs = state.plSec; });
   } catch (e) { /* ignore a corrupt payload and start fresh */ }
 }
@@ -1595,11 +1598,15 @@ function closePanel() { document.body.classList.remove('panel-open'); }
 $('#menuBtn').addEventListener('click', openPanel);
 $('#closeBtn').addEventListener('click', closePanel);
 
-$$('.tab').forEach(t => t.addEventListener('click', () => {
-  $$('.tab').forEach(x => x.classList.toggle('on', x === t));
-  $$('.pane').forEach(p => p.classList.toggle('on', p.id === 'pane-' + t.dataset.pane));
-  if (t.dataset.pane === 'grid') pullGrid();
-}));
+/* `pull` reads the live board into the grid editor, which is what you want
+   when a person clicks the tab, and exactly what you do not want when a
+   sequence entry has just been loaded into it. */
+function showTab(name, pull) {
+  $$('.tab').forEach(x => x.classList.toggle('on', x.dataset.pane === name));
+  $$('.pane').forEach(p => p.classList.toggle('on', p.id === 'pane-' + name));
+  if (name === 'grid' && pull !== false) pullGrid();
+}
+$$('.tab').forEach(t => t.addEventListener('click', () => showTab(t.dataset.pane)));
 
 /* ---- idle fade of the menu button ---- */
 let idleTimer = null;
@@ -1834,6 +1841,11 @@ function pullGrid() { gridBuf = currentMatrix(); redrawGrid(); }
 })();
 
 $('#gridSend').addEventListener('click', () => { stopSequence(); setBoard(gridBuf.map(r => r.slice())); });
+$('#gridAdd').addEventListener('click', () => {
+  state.playlist.push({ matrix: gridBuf.map(r => r.slice()), secs: state.plSec });
+  renderPlaylist(); save();
+  toast('Board added to the sequence as #' + state.playlist.length);
+});
 $('#gridPull').addEventListener('click', pullGrid);
 $('#gridFill').addEventListener('click', () => {
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) gridBuf[r][c] = brush;
@@ -1861,9 +1873,16 @@ function entrySecs(m) {
   const n = m ? +m.secs : NaN;
   return (isFinite(n) && n >= 1) ? n : state.plSec;
 }
-function entryLabel(m) {
-  return (m && m.text ? m.text.replace(/\s*\n\s*/g, ' · ').trim() : '') || '(blank board)';
+function matrixPreview(mx) {
+  return mx.map(r => r.map(c => DRUM[c].kind === 'colour' ? '■' : (DRUM[c].ch || ' ')).join('').replace(/\s+$/, ''))
+           .filter(t => t.trim()).join(' · ').trim();
 }
+function entryLabel(m) {
+  if (!m) return '(blank board)';
+  if (m.matrix) return matrixPreview(m.matrix) || '(blank board)';
+  return (m.text ? m.text.replace(/\s*\n\s*/g, ' · ').trim() : '') || '(blank board)';
+}
+function entryIsBoard(m) { return !!(m && m.matrix); }
 
 function renderPlaylist() {
   const box = $('#plList');
@@ -1924,11 +1943,19 @@ function renderPlaylist() {
       if (plRunning) scheduleNext();
       renderPlaylist();
     });
-    mk('✎', 'Load into Compose to edit', '', () => {
+    mk('✎', entryIsBoard(m) ? 'Load into the Grid to edit' : 'Load into Compose to edit', '', () => {
       plEdit = i;
-      applyMessage(m);
+      if (entryIsBoard(m)) {
+        gridBuf = m.matrix.map(r => r.slice());
+        redrawGrid();
+        showTab('grid', false);         /* keep the entry, do not re-read the board */
+        toast('Entry #' + (i + 1) + ' loaded into the Grid');
+      } else {
+        applyMessage(m);
+        showTab('compose');
+        toast('Entry #' + (i + 1) + ' loaded into Compose');
+      }
       renderPlaylist();
-      toast('Entry #' + (i + 1) + ' loaded into Compose');
     });
     mk('↑', 'Move earlier', '', () => moveEntry(i, -1));
     mk('↓', 'Move later', '', () => moveEntry(i, 1));
@@ -1955,12 +1982,17 @@ function moveEntry(i, d) {
   renderPlaylist(); save();
 }
 
+function entryMatrix(m) {
+  if (!m) return blankMatrix();
+  if (m.matrix) return m.matrix.map(r => r.slice());
+  return layoutMessage(m.text, m).matrix;
+}
+
 function showEntry(i) {
   const m = state.playlist[i];
   if (!m) return;
   stopSequence();
-  const res = layoutMessage(m.text, m);
-  setBoard(res.matrix);
+  setBoard(entryMatrix(m));
 }
 
 /* A message holds for its own number of seconds once it has actually landed.
@@ -2023,6 +2055,11 @@ $('#plAdd').addEventListener('click', () => {
   renderPlaylist(); save();
   toast('Added as #' + state.playlist.length);
 });
+$('#plAddBoard').addEventListener('click', () => {
+  state.playlist.push({ matrix: currentMatrix(), secs: state.plSec });
+  renderPlaylist(); save();
+  toast('Board added as #' + state.playlist.length);
+});
 $('#plClear').addEventListener('click', () => {
   if (state.playlist.length && !confirm('Remove all ' + state.playlist.length + ' messages from the sequence?')) return;
   state.playlist = []; plEdit = -1; plIndex = -1;
@@ -2030,8 +2067,11 @@ $('#plClear').addEventListener('click', () => {
 });
 $('#plUpdate').addEventListener('click', () => {
   if (plEdit < 0 || !state.playlist[plEdit]) { plEdit = -1; renderPlaylist(); return; }
-  const keep = state.playlist[plEdit].secs;
-  state.playlist[plEdit] = { text: msgEl.value, h: state.h, v: state.v, wrap: state.wrap, secs: keep };
+  const prev = state.playlist[plEdit];
+  const keep = prev.secs;
+  state.playlist[plEdit] = entryIsBoard(prev)
+    ? { matrix: gridBuf.map(r => r.slice()), secs: keep }
+    : { text: msgEl.value, h: state.h, v: state.v, wrap: state.wrap, secs: keep };
   toast('Entry #' + (plEdit + 1) + ' updated');
   plEdit = -1;
   renderPlaylist(); save();
@@ -2120,7 +2160,7 @@ function boardTarget() {
   if (state.clock) return layoutMessage(clockText(), { h: 'center', v: 'middle', wrap: true }).matrix;
   if (plRunning && state.playlist[plIndex]) {
     const m = state.playlist[plIndex];
-    return layoutMessage(m.text, m).matrix;
+    return entryMatrix(m);
   }
   return layoutMessage(msgEl.value, state).matrix;
 }

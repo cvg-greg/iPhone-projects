@@ -87,9 +87,15 @@ name.
 colour from the palette and tap, or drag to paint a run. *Read board* pulls
 whatever is currently displayed into the editor.
 
-**Playlist** — build a sequence of messages and let the board run it.
+**Playlist** — build a sequence of boards and let the board run it. An entry
+can be a typed message or a board painted in the Grid, and the two mix freely
+in one sequence.
 
 * Entries display **in the order listed**; the arrows move one up or down.
+* *Add current message* takes what is in Compose; *Add current board* takes
+  whatever the board is showing, tile for tile, including anything painted in
+  the Grid. The Grid tab has its own *Add to sequence* for the board being
+  painted there.
 * Each entry carries **its own hold time in seconds**, set in the field on its
   row. The default for new entries is the slider below the list.
 * A hold is counted from the moment the tiles *land*, not from when they start
@@ -98,8 +104,9 @@ whatever is currently displayed into the editor.
 * **Loop** returns to the first message after the last. Switch it off and the
   sequence plays once through and stops.
 * **Shuffle** picks the next entry at random instead of in order.
-* ▶ jumps straight to an entry, ✎ loads it back into Compose — edit it there,
-  then press *Update* to write it back to the same slot — and × removes it.
+* ▶ jumps straight to an entry, ✎ opens it for editing — a message in Compose,
+  a painted board in the Grid — and *Update* writes it back to the same slot.
+  × removes it.
 
 Clock mode puts the time on the board and re-flips it as the minute turns.
 
