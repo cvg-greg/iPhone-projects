@@ -36,12 +36,15 @@ def synth(seed, kind='click'):
     at  = int(0.003 * SR)
     tail = n - at
 
-    # contact burst, only lightly tamed so it keeps the reference's brightness
+    # Contact burst. Held well back: an instantaneous full-scale burst is what
+    # makes a click read as a snap at you rather than a tick in the room, so
+    # the noise sits under the modes rather than on top of them.
     raw  = [rng.uniform(-1, 1) for _ in range(tail)]
-    band = lp(raw, 0.45)          # fitted to the reference brightness
+    band = lp(raw, 0.36)
     tau  = rng.uniform(0.0015, 0.0025) if kind == 'click' else rng.uniform(0.0026, 0.0038)
+    burst = 0.55 if kind == 'click' else 0.60
     for i in range(tail):
-        buf[at + i] += band[i] * math.exp(-(i / SR) / tau)
+        buf[at + i] += band[i] * math.exp(-(i / SR) / tau) * burst
 
     if kind == 'click':
         modes = [(rng.uniform(175, 240),   rng.uniform(0.008, 0.012), 0.13),
@@ -61,6 +64,13 @@ def synth(seed, kind='click'):
         for i in range(tail):
             t = i / SR
             buf[at + i] += math.sin(2 * math.pi * f * t + ph) * math.exp(-t / dec) * amp
+
+    # A short rise on the onset. A clock tick does not start instantaneously;
+    # giving the strike a couple of milliseconds to arrive takes the edge off
+    # the transient without touching the timbre that follows it.
+    rise = int((0.0024 if kind == 'click' else 0.0030) * SR)
+    for i in range(rise):
+        buf[at + i] *= 0.5 - 0.5 * math.cos(math.pi * i / rise)
 
     fade = int(0.0025 * SR)
     for i in range(fade):

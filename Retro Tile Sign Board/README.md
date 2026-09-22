@@ -50,6 +50,12 @@ build step, no network, no dependencies.
   measured reference recordings: spectral centroid lands at 3331–3644 Hz
   against the references' 3041 and 3761, with the energy sitting where theirs
   does, in the 800 Hz – 4 kHz band.
+* The strike is deliberately **soft-edged**: the contact burst sits under the
+  modes rather than on top of them, and the onset is given a couple of
+  milliseconds to arrive. Only about a third of a click's energy lands in its
+  first 3 ms, against better than half before, which is the difference between
+  a tick in the room and a snap at you. It is meant to read like a loud clock
+  — present, but not asking for attention.
 * **Pitch is held constant.** Playback rate stays at 1, so what varies across a
   change is the rate of clicking, never the note. The variety comes from the
   six different strikes and a little gain scatter.
