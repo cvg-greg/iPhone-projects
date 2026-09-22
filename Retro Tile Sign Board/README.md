@@ -21,7 +21,9 @@ build step, no network, no dependencies.
 * Changing the board does not cut to the new message. Each drum spins *forward*
   through its flaps until it reaches the character it needs, exactly as the
   mechanism does, so a tile travelling from `Z` to `B` rolls the long way round.
-  Worst case is 71 flaps, about 2.7 seconds at the default speed.
+  Worst case is a full revolution of the drum, about 5.9 seconds at the
+  default speed of 76 ms a flap. *Flip speed* in Settings runs from 16 ms to
+  200 ms if you want it brisker or slower still.
 * **Every tile turns on every change.** A drum that already shows the right
   character would otherwise sit still, which makes a one-word edit look like
   nothing happened, so it takes the long way round instead — a full

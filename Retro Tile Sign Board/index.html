@@ -413,7 +413,7 @@
     <section class="pane" id="pane-set">
       <div class="field">
         <label class="label">Flip speed &mdash; <b id="spdLbl">38</b> ms per flap</label>
-        <input type="range" id="spd" min="16" max="110" step="1" value="38">
+        <input type="range" id="spd" min="16" max="200" step="1" value="76">
       </div>
       <div class="field">
         <label class="label">Transition spread &mdash; <b id="stgLbl">520</b> ms</label>
@@ -874,7 +874,7 @@ const tileAt = (r, c) => tiles[r * COLS + c];
    touch screen cannot, so the button stays put there unless asked otherwise. */
 const COARSE = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
 const settings = {
-  stepMs: 38, stagger: 520, volume: 0.55, sound: true, sweep: true,
+  stepMs: 76, stagger: 520, volume: 0.55, sound: true, sweep: true,
   pattern: 'cascade', boot: true,
   retina: (window.devicePixelRatio || 1) > 1.25,
   frame: true, autoHide: !COARSE
@@ -1303,17 +1303,17 @@ const audio = (function () {
 
       let buf = null, gain, rate;
       if (last && thunk) {
-        buf = thunk; gain = 0.44; rate = 0.93 + Math.random() * 0.14;
+        buf = thunk; gain = 0.22; rate = 0.93 + Math.random() * 0.14;
       } else {
         const pool = [];
         for (let i = 0; i < clicks.length; i++) if (clicks[i]) pool.push(clicks[i]);
         if (pool.length) {
           buf = pool[(Math.random() * pool.length) | 0];
-          gain = last ? 0.36 : 0.19;
+          gain = last ? 0.18 : 0.095;
           rate = 0.86 + Math.random() * 0.34;
         } else {
           buf = fallback;
-          gain = last ? 0.45 : 0.20;
+          gain = last ? 0.225 : 0.10;
           rate = 0.82 + Math.random() * 0.5;
         }
       }
