@@ -178,14 +178,33 @@
 
   /* playlist */
   .pl-item {
-    display: flex; align-items: center; gap: 8px; background: #16161a;
+    display: flex; flex-direction: column; gap: 6px; background: #16161a;
     border: 1px solid var(--ui-line-soft); border-radius: 8px; padding: 8px 10px; margin-bottom: 6px;
+  }
+  .pl-main { display: flex; align-items: center; gap: 8px; }
+  .pl-num {
+    font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 10px;
+    color: var(--ui-dim); min-width: 14px; text-align: right; flex: none;
   }
   .pl-item .t {
     flex: 1; font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 11px;
     color: #c9c8c4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
+  .pl-ctl { display: flex; align-items: center; gap: 2px; }
+  .pl-ctl .gap { flex: 1; }
+  .pl-ctl .sec {
+    width: 62px; padding: 4px 6px; font-size: 11px;
+    font-family: "SF Mono", ui-monospace, Menlo, monospace;
+  }
+  .pl-ctl .unit { font-size: 10px; color: var(--ui-dim); margin-right: 4px; }
   .pl-item.cur { border-color: var(--ui-accent); background: rgba(216,171,58,0.07); }
+  .pl-item.edit { border-color: #4b7fd0; background: rgba(75,127,208,0.08); }
+  #plEditBar {
+    display: none; align-items: center; gap: 8px; margin-bottom: 10px;
+    background: rgba(75,127,208,0.10); border: 1px solid #35507a;
+    border-radius: 8px; padding: 9px 10px; font-size: 11px; color: #c5d4ea;
+  }
+  #plEditBar.on { display: flex; }
   .ic {
     background: none; border: none; color: var(--ui-dim); cursor: pointer; font-size: 13px;
     padding: 2px 4px; line-height: 1; font-family: inherit;
@@ -338,19 +357,35 @@
     <!-- ============ PLAYLIST ============ -->
     <section class="pane" id="pane-play">
       <div class="field">
-        <label class="label">Rotation</label>
+        <label class="label">Sequence &mdash; shown in this order</label>
+        <div id="plEditBar">
+          <span>Editing <b id="plEditNum"></b>. Change it under Compose, then&hellip;</span>
+          <span class="gap" style="flex:1"></span>
+          <button class="btn sm" id="plUpdate">Update</button>
+          <button class="btn sm" id="plCancelEdit">Cancel</button>
+        </div>
         <div id="plList"></div>
         <div class="row" style="margin-top:8px">
           <button class="btn sm" id="plAdd">Add current message</button>
           <button class="btn sm" id="plClear">Clear list</button>
         </div>
+        <div class="hint">
+          Each entry holds for its own number of seconds. &#9654; jumps to it,
+          &#9998; loads it into Compose to edit, the arrows reorder it.
+        </div>
       </div>
+
       <div class="field">
-        <label class="label">Hold each message for <b id="plSecLbl">30</b> seconds</label>
-        <input type="range" id="plSec" min="5" max="600" step="5" value="30">
+        <label class="label">Default hold for new entries &mdash; <b id="plSecLbl">30</b> seconds</label>
+        <input type="range" id="plSec" min="3" max="600" step="1" value="30">
+      </div>
+
+      <div class="sw-row">
+        <div><div class="n">Loop</div><div class="d">Return to the first message after the last</div></div>
+        <div class="toggle on" id="plLoop"></div>
       </div>
       <div class="sw-row">
-        <div><div class="n">Shuffle</div><div class="d">Pick the next message at random</div></div>
+        <div><div class="n">Shuffle</div><div class="d">Pick the next message at random instead of in order</div></div>
         <div class="toggle" id="plShuffle"></div>
       </div>
       <div class="field row" style="margin-top:14px">
@@ -389,6 +424,10 @@
         <input type="range" id="vol" min="0" max="100" step="1" value="55">
       </div>
 
+      <div class="sw-row">
+        <div><div class="n">Flip every tile</div><div class="d">Tiles already showing the right character still turn a full revolution, so the whole board moves on every change</div></div>
+        <div class="toggle on" id="sweepTog"></div>
+      </div>
       <div class="sw-row">
         <div><div class="n">Flap sound</div><div class="d">Synthesised mechanical clicking</div></div>
         <div class="toggle on" id="sndTog"></div>
@@ -514,8 +553,6 @@ const BOARD_X = (STAGE_W - BOARD_W) / 2;
 const BOARD_Y = (STAGE_H - BOARD_H) / 2;
 const RADIUS  = TILE_W * 0.085;
 
-const tileX = c => BOARD_X + c * (TILE_W + GAP);
-const tileY = r => BOARD_Y + r * (TILE_H + GAP);
 
 /* ---------------------------------------------------------------------------
    3. GLYPH ATLAS
@@ -523,10 +560,17 @@ const tileY = r => BOARD_Y + r * (TILE_H + GAP);
    frame then costs only a couple of drawImage calls per tile, which is what
    keeps 132 simultaneously spinning drums smooth on a phone.
    ------------------------------------------------------------------------- */
-const SS = 2;                                       /* atlas supersample      */
 const ATLAS_COLS = 12;
-const CELL_W = Math.ceil(TILE_W * SS), CELL_H = Math.ceil(TILE_H * SS);
 let atlas = null;
+let SC = 0;                  /* scale the atlas is built for      */
+let DW = 0, DH = 0;          /* tile size in device pixels        */
+let CELL_W = 0, CELL_H = 0;  /* atlas cell, identical to DW x DH  */
+
+/* Tile positions in whole device pixels. Blitting a cell 1:1 onto an integer
+   position is a straight copy; letting the canvas resample a 2x atlas down to
+   tile size cost six times as much per frame and came out softer. */
+const dTileX = c => Math.round((BOARD_X + c * (TILE_W + GAP)) * SC);
+const dTileY = r => Math.round((BOARD_Y + r * (TILE_H + GAP)) * SC);
 
 function roundRect(ctx, x, y, w, h, r) {
   if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); return; }
@@ -540,26 +584,33 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-function buildAtlas() {
+function ensureAtlas(scale) {
+  const sc = Math.max(1, scale);
+  if (atlas && SC === sc) return;
+  SC = sc;
+  DW = Math.max(2, Math.round(TILE_W * sc));
+  const h = Math.round(TILE_H * sc);
+  DH = h + (h % 2);                     /* even, so each half is whole pixels */
+  CELL_W = DW; CELL_H = DH;
+
   const rows = Math.ceil(NCODES / ATLAS_COLS);
   const cv = document.createElement('canvas');
   cv.width = ATLAS_COLS * CELL_W;
   cv.height = rows * CELL_H;
   const g = cv.getContext('2d');
   for (let code = 0; code < NCODES; code++) {
-    const ox = (code % ATLAS_COLS) * CELL_W;
-    const oy = Math.floor(code / ATLAS_COLS) * CELL_H;
     g.save();
-    g.translate(ox, oy);
-    drawFlapCell(g, DRUM[code], CELL_W, CELL_H);
+    g.translate((code % ATLAS_COLS) * CELL_W, Math.floor(code / ATLAS_COLS) * CELL_H);
+    drawFlapCell(g, DRUM[code], CELL_W, CELL_H, sc);
     g.restore();
   }
   atlas = cv;
+  needsRender = true;
 }
 
 /* one flap card: body, bevel, side rails, seam, glyph */
-function drawFlapCell(g, spec, w, h) {
-  const r = RADIUS * SS;
+function drawFlapCell(g, spec, w, h, sc) {
+  const r = RADIUS * sc;
   const mid = h / 2;
 
   /* --- card body ------------------------------------------------------ */
@@ -596,8 +647,8 @@ function drawFlapCell(g, spec, w, h) {
   g.fillRect(0, 0, rail, h);
   g.fillRect(w - rail, 0, rail, h);
   g.fillStyle = 'rgba(255,255,255,0.05)';
-  g.fillRect(rail, 0, 1 * SS, h);
-  g.fillRect(w - rail - 1 * SS, 0, 1 * SS, h);
+  g.fillRect(rail, 0, sc, h);
+  g.fillRect(w - rail - sc, 0, sc, h);
 
   /* --- glyph ----------------------------------------------------------- */
   if (spec.kind === 'char') {
@@ -635,7 +686,7 @@ function drawFlapCell(g, spec, w, h) {
   /* --- edge ------------------------------------------------------------- */
   roundRect(g, 0.5, 0.5, w - 1, h - 1, r);
   g.strokeStyle = 'rgba(0,0,0,0.85)';
-  g.lineWidth = SS;
+  g.lineWidth = sc;
   g.stroke();
 }
 
@@ -657,7 +708,8 @@ for (let r = 0; r < ROWS; r++) {
       left: 0,          /* flaps still to turn          */
       t: 0,             /* 0..1 through the current flap*/
       delay: 0,         /* ms before this drum starts   */
-      spinning: false
+      spinning: false,
+      dirty: false      /* needs one more repaint        */
     });
   }
 }
@@ -667,22 +719,29 @@ const tileAt = (r, c) => tiles[r * COLS + c];
    touch screen cannot, so the button stays put there unless asked otherwise. */
 const COARSE = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
 const settings = {
-  stepMs: 38, stagger: 260, volume: 0.55, sound: true,
+  stepMs: 38, stagger: 260, volume: 0.55, sound: true, sweep: true,
   retina: false, frame: true, autoHide: !COARSE
 };
 
-function setBoard(matrix) {
+/* Changing the message turns the drums. A tile whose character is not
+   changing would normally sit still, which makes a one-word edit look like
+   nothing happened -- so by default it takes the long way round instead, a
+   full revolution back to the same flap, and the whole board moves. */
+function setBoard(matrix, opts) {
+  const sweep = (opts && opts.sweep !== undefined) ? opts.sweep : settings.sweep;
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       const tl = tileAt(r, c);
       const want = matrix[r][c] | 0;
-      if (want === tl.code && !tl.spinning) continue;
+      let steps = (want - tl.code + NCODES) % NCODES;
+      if (steps === 0 && sweep) steps = NCODES;     /* all the way round */
       tl.target = want;
-      tl.left = (want - tl.code + NCODES) % NCODES;
-      if (tl.left === 0) { tl.spinning = false; tl.t = 0; continue; }
-      tl.t = 0;
-      tl.delay = Math.random() * settings.stagger;
-      tl.spinning = true;
+      tl.left = steps;
+      if (!tl.spinning) {                           /* a mid-flip drum keeps its phase */
+        tl.t = 0;
+        tl.delay = Math.random() * settings.stagger;
+      }
+      tl.spinning = steps > 0;
     }
   }
   audio.wake();
@@ -729,22 +788,71 @@ function step(dt) {
    Draws the whole 1920 x 1080 stage at an arbitrary scale, so the live canvas
    and the PNG export share one code path.
    ------------------------------------------------------------------------- */
+/* The enclosure is static art with an expensive 48px shadow blur behind it,
+   so it is rendered once per scale and kept. Redrawing it every frame was
+   costing more than all 132 drums put together. */
+const bgCache = new Map();
+let bgFrameFlag = null;
+
+function backgroundFor(scale) {
+  if (bgFrameFlag !== settings.frame) { bgCache.clear(); bgFrameFlag = settings.frame; }
+  const key = scale;
+  let cv = bgCache.get(key);
+  if (cv) return cv;
+  cv = document.createElement('canvas');
+  cv.width = Math.round(STAGE_W * scale);
+  cv.height = Math.round(STAGE_H * scale);
+  const g = cv.getContext('2d');
+  g.setTransform(scale, 0, 0, scale, 0, 0);
+  g.fillStyle = '#000';
+  g.fillRect(0, 0, STAGE_W, STAGE_H);
+  if (settings.frame) drawFrame(g);
+  roundRect(g, BOARD_X - 10, BOARD_Y - 10, BOARD_W + 20, BOARD_H + 20, RADIUS + 6);
+  g.fillStyle = '#050506';
+  g.fill();
+  bgCache.set(key, cv);
+  return cv;
+}
+
+/* full repaint: background plus every tile */
 function renderStage(ctx, scale) {
-  ctx.save();
-  ctx.setTransform(scale, 0, 0, scale, 0, 0);
-  ctx.fillStyle = '#000';
-  ctx.fillRect(0, 0, STAGE_W, STAGE_H);
+  ensureAtlas(scale);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(backgroundFor(scale), 0, 0);
+  for (let i = 0; i < tiles.length; i++) {
+    drawTile(ctx, tiles[i]);
+    tiles[i].dirty = tiles[i].spinning;
+  }
+}
 
-  if (settings.frame) drawFrame(ctx);
+/* incremental repaint: only the drums that are moving, or have just stopped.
+   Tiles never overlap, so each one can be patched back from the background. */
+function renderMoving(ctx, scale) {
+  ensureAtlas(scale);
+  const bg = backgroundFor(scale);
+  const maxW = bg.width, maxH = bg.height;
+  let any = false;
 
-  /* the recessed well the drums sit in */
-  roundRect(ctx, BOARD_X - 10, BOARD_Y - 10, BOARD_W + 20, BOARD_H + 20, RADIUS + 6);
-  ctx.fillStyle = '#050506';
-  ctx.fill();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  for (let i = 0; i < tiles.length; i++) {
+    const tl = tiles[i];
+    if (!tl.spinning && !tl.dirty) continue;
+    any = true;
+    const sx = Math.max(0, dTileX(tl.c));
+    const sy = Math.max(0, dTileY(tl.r));
+    const sw = Math.min(maxW - sx, DW);
+    const sh = Math.min(maxH - sy, DH);
+    if (sw > 0 && sh > 0) ctx.drawImage(bg, sx, sy, sw, sh, sx, sy, sw, sh);
+  }
+  if (!any) return false;
 
-  for (let i = 0; i < tiles.length; i++) drawTile(ctx, tiles[i]);
-
-  ctx.restore();
+  for (let i = 0; i < tiles.length; i++) {
+    const tl = tiles[i];
+    if (!tl.spinning && !tl.dirty) continue;
+    drawTile(ctx, tl);
+    tl.dirty = tl.spinning;
+  }
+  return true;
 }
 
 function drawFrame(ctx) {
@@ -771,9 +879,9 @@ function drawFrame(ctx) {
 }
 
 function drawTile(ctx, tl) {
-  const x = tileX(tl.c), y = tileY(tl.r);
-  const halfH = TILE_H / 2;
-  const mid = y + halfH;
+  const x = dTileX(tl.c), y = dTileY(tl.r);
+  const half = DH / 2;
+  const mid = y + half;
 
   if (!tl.spinning || tl.delay > 0) {
     blitWhole(ctx, tl.code, x, y);
@@ -790,37 +898,30 @@ function drawTile(ctx, tl) {
 
   /* the card in flight */
   const t = tl.t;
+  const a = (t < 0.5 ? (t / 0.5) : ((1 - t) / 0.5)) * (Math.PI / 2);
+  const sq = Math.cos(a);                     /* foreshortening, 1 -> 0 -> 1 */
+  ctx.save();
+  ctx.translate(0, mid);
+  ctx.scale(1, sq);
+  ctx.translate(0, -mid);
   if (t < 0.5) {
-    const a = (t / 0.5) * (Math.PI / 2);            /* 0 -> 90deg, falling  */
-    const s = Math.cos(a);
-    ctx.save();
-    ctx.translate(x, mid);
-    ctx.scale(1, s);
-    ctx.translate(-x, -mid);
-    blitHalf(ctx, from, x, y, 'top');
-    ctx.fillStyle = 'rgba(0,0,0,' + (0.50 * (1 - s)).toFixed(3) + ')';
-    ctx.fillRect(x, y, TILE_W, halfH);
-    ctx.restore();
+    blitHalf(ctx, from, x, y, 'top');         /* falling away */
+    ctx.fillStyle = 'rgba(0,0,0,' + (0.50 * (1 - sq)).toFixed(3) + ')';
+    ctx.fillRect(x, y, DW, half);
   } else {
-    const a = ((1 - t) / 0.5) * (Math.PI / 2);      /* 90 -> 0deg, landing  */
-    const s = Math.cos(a);
-    ctx.save();
-    ctx.translate(x, mid);
-    ctx.scale(1, s);
-    ctx.translate(-x, -mid);
-    blitHalf(ctx, to, x, mid, 'bottom');
-    ctx.fillStyle = 'rgba(0,0,0,' + (0.42 * (1 - s)).toFixed(3) + ')';
-    ctx.fillRect(x, mid, TILE_W, halfH);
-    ctx.restore();
+    blitHalf(ctx, to, x, mid, 'bottom');      /* landing */
+    ctx.fillStyle = 'rgba(0,0,0,' + (0.42 * (1 - sq)).toFixed(3) + ')';
+    ctx.fillRect(x, mid, DW, half);
   }
+  ctx.restore();
 
-  /* contact shadow the moving card throws on the halves below it */
+  /* contact shadow the moving card throws on the half below it */
   const cast = 0.30 * (1 - Math.abs(t - 0.5) * 2);
   if (cast > 0.004) {
     ctx.save();
     ctx.globalAlpha = cast;
     ctx.fillStyle = castShadow(ctx, tl.r);
-    ctx.fillRect(x, mid, TILE_W, halfH * 0.62);
+    ctx.fillRect(x, mid, DW, half * 0.62);
     ctx.restore();
   }
 }
@@ -828,10 +929,13 @@ function drawTile(ctx, tl) {
 /* cached per row, per context: black at the seam fading down the lower half */
 function castShadow(ctx, row) {
   let cache = ctx.__vestaShadow;
-  if (!cache) cache = ctx.__vestaShadow = [];
+  if (!cache || ctx.__vestaShadowSC !== SC) {
+    cache = ctx.__vestaShadow = [];
+    ctx.__vestaShadowSC = SC;
+  }
   if (!cache[row]) {
-    const mid = tileY(row) + TILE_H / 2;
-    const g = ctx.createLinearGradient(0, mid, 0, mid + TILE_H / 2 * 0.62);
+    const mid = dTileY(row) + DH / 2;
+    const g = ctx.createLinearGradient(0, mid, 0, mid + (DH / 2) * 0.62);
     g.addColorStop(0, 'rgba(0,0,0,1)');
     g.addColorStop(1, 'rgba(0,0,0,0)');
     cache[row] = g;
@@ -841,12 +945,12 @@ function castShadow(ctx, row) {
 
 function blitWhole(ctx, code, x, y) {
   const s = srcOf(code);
-  ctx.drawImage(atlas, s.x, s.y, CELL_W, CELL_H, x, y, TILE_W, TILE_H);
+  ctx.drawImage(atlas, s.x, s.y, DW, DH, x, y, DW, DH);
 }
 function blitHalf(ctx, code, x, y, which) {
   const s = srcOf(code);
-  const sy = which === 'top' ? s.y : s.y + CELL_H / 2;
-  ctx.drawImage(atlas, s.x, sy, CELL_W, CELL_H / 2, x, y, TILE_W, TILE_H / 2);
+  const half = DH / 2;
+  ctx.drawImage(atlas, s.x, which === 'top' ? s.y : s.y + half, DW, half, x, y, DW, half);
 }
 
 /* ---------------------------------------------------------------------------
@@ -866,7 +970,7 @@ function fitCanvas() {
   canvas.width = STAGE_W * renderScale;
   canvas.height = STAGE_H * renderScale;
   cctx.imageSmoothingEnabled = true;
-  cctx.imageSmoothingQuality = 'high';
+  cctx.imageSmoothingQuality = 'low';
   requestRender();
 }
 function requestRender() { needsRender = true; if (!running) { running = true; lastT = 0; requestAnimationFrame(loop); } }
@@ -875,11 +979,15 @@ function loop(now) {
   const dt = lastT ? Math.min(now - lastT, 60) : 16;
   lastT = now;
   const busy = step(dt);
-  if (busy || needsRender) {
+  let painted = false;
+  if (needsRender) {
     renderStage(cctx, renderScale);
     needsRender = false;
+    painted = true;
+  } else {
+    painted = renderMoving(cctx, renderScale);
   }
-  if (busy) { requestAnimationFrame(loop); }
+  if (busy || painted) { requestAnimationFrame(loop); }
   else { running = false; lastT = 0; }
 }
 
@@ -1059,7 +1167,7 @@ const state = {
   h: 'center', v: 'middle', wrap: true,
   saved: {},                 /* name -> {text,h,v,wrap}     */
   playlist: [],              /* [{text,h,v,wrap}]           */
-  plSec: 30, plShuffle: false,
+  plSec: 30, plShuffle: false, plLoop: true,
   clock: false, clockStyle: 'big', clockTmpl: '{time}'
 };
 
@@ -1076,6 +1184,9 @@ function load() {
     const o = JSON.parse(raw);
     if (o && o.state) Object.assign(state, o.state);
     if (o && o.settings) Object.assign(settings, o.settings);
+    if (!Array.isArray(state.playlist)) state.playlist = [];
+    state.playlist = state.playlist.filter(m => m && typeof m.text === 'string');
+    state.playlist.forEach(m => { if (!(+m.secs >= 1)) m.secs = state.plSec; });
   } catch (e) { /* ignore a corrupt payload and start fresh */ }
 }
 
@@ -1313,61 +1424,7 @@ $('#gridClear').addEventListener('click', () => { gridBuf = blankMatrix(); redra
 /* ---------------------------------------------------------------------------
    11. PLAYLIST + CLOCK
    ------------------------------------------------------------------------- */
-let plIndex = -1, plTimer = null, plRunning = false;
-
-function renderPlaylist() {
-  const box = $('#plList');
-  box.innerHTML = '';
-  if (!state.playlist.length) {
-    box.innerHTML = '<div class="hint">Nothing in rotation yet. Compose a message, then add it here.</div>';
-    return;
-  }
-  state.playlist.forEach((m, i) => {
-    const row = document.createElement('div');
-    row.className = 'pl-item' + (plRunning && i === plIndex ? ' cur' : '');
-    const t = document.createElement('div');
-    t.className = 't';
-    t.textContent = (m.text || '').replace(/\n/g, ' · ').slice(0, 60) || '(blank)';
-    row.appendChild(t);
-    const mk = (label, title, cls, fn) => {
-      const b = document.createElement('button');
-      b.className = 'ic' + (cls ? ' ' + cls : '');
-      b.textContent = label; b.title = title;
-      b.addEventListener('click', fn);
-      row.appendChild(b);
-    };
-    mk('↑', 'Move up', '', () => {
-      if (i === 0) return;
-      const tmp = state.playlist[i - 1];
-      state.playlist[i - 1] = state.playlist[i]; state.playlist[i] = tmp;
-      renderPlaylist(); save();
-    });
-    mk('↓', 'Move down', '', () => {
-      if (i === state.playlist.length - 1) return;
-      const tmp = state.playlist[i + 1];
-      state.playlist[i + 1] = state.playlist[i]; state.playlist[i] = tmp;
-      renderPlaylist(); save();
-    });
-    mk('▶', 'Show now', '', () => { applyMessage(m); sendCompose(true); });
-    mk('×', 'Remove', 'del', () => {
-      state.playlist.splice(i, 1);
-      renderPlaylist(); save();
-    });
-    box.appendChild(row);
-  });
-}
-
-$('#plAdd').addEventListener('click', () => {
-  state.playlist.push({ text: msgEl.value, h: state.h, v: state.v, wrap: state.wrap });
-  renderPlaylist(); save(); toast('Added to rotation');
-});
-$('#plClear').addEventListener('click', () => { state.playlist = []; renderPlaylist(); save(); });
-$('#plSec').addEventListener('input', e => {
-  state.plSec = +e.target.value;
-  $('#plSecLbl').textContent = state.plSec;
-  save();
-  if (plRunning) { startRotation(true); }
-});
+let plIndex = -1, plTimer = null, plRunning = false, plEdit = -1;
 
 function togWire(sel, get, set) {
   const el = $(sel);
@@ -1378,7 +1435,126 @@ function togWire(sel, get, set) {
     save();
   });
 }
-togWire('#plShuffle', () => state.plShuffle, v => state.plShuffle = v);
+
+/* how long an entry holds: its own setting, else the list default */
+function entrySecs(m) {
+  const n = m ? +m.secs : NaN;
+  return (isFinite(n) && n >= 1) ? n : state.plSec;
+}
+function entryLabel(m) {
+  return (m && m.text ? m.text.replace(/\s*\n\s*/g, ' · ').trim() : '') || '(blank board)';
+}
+
+function renderPlaylist() {
+  const box = $('#plList');
+  box.innerHTML = '';
+  $('#plEditBar').classList.toggle('on', plEdit >= 0);
+  if (plEdit >= 0) $('#plEditNum').textContent = '#' + (plEdit + 1);
+
+  if (!state.playlist.length) {
+    box.innerHTML = '<div class="hint">Nothing in the sequence yet. Write a message under Compose, then add it here.</div>';
+    return;
+  }
+
+  state.playlist.forEach((m, i) => {
+    const row = document.createElement('div');
+    row.className = 'pl-item' + (plRunning && i === plIndex ? ' cur' : '') + (i === plEdit ? ' edit' : '');
+
+    const main = document.createElement('div');
+    main.className = 'pl-main';
+    const num = document.createElement('span');
+    num.className = 'pl-num';
+    num.textContent = (i + 1);
+    const t = document.createElement('div');
+    t.className = 't';
+    t.textContent = entryLabel(m).slice(0, 70);
+    main.appendChild(num); main.appendChild(t);
+    row.appendChild(main);
+
+    const ctl = document.createElement('div');
+    ctl.className = 'pl-ctl';
+
+    const sec = document.createElement('input');
+    sec.type = 'number'; sec.className = 'sec'; sec.min = '1'; sec.max = '86400';
+    sec.value = entrySecs(m);
+    sec.title = 'Seconds this message stays on the board';
+    sec.addEventListener('change', () => {
+      const n = Math.max(1, Math.round(+sec.value || state.plSec));
+      m.secs = n; sec.value = n; save();
+      if (plRunning && i === plIndex) scheduleNext();
+    });
+    const unit = document.createElement('span');
+    unit.className = 'unit'; unit.textContent = 'sec';
+    ctl.appendChild(sec); ctl.appendChild(unit);
+
+    const gap = document.createElement('span');
+    gap.className = 'gap';
+    ctl.appendChild(gap);
+
+    const mk = (label, title, cls, fn) => {
+      const b = document.createElement('button');
+      b.className = 'ic' + (cls ? ' ' + cls : '');
+      b.textContent = label; b.title = title;
+      b.addEventListener('click', fn);
+      ctl.appendChild(b);
+    };
+    mk('▶', 'Show this one now', '', () => {
+      plIndex = i;
+      showEntry(i);
+      if (plRunning) scheduleNext();
+      renderPlaylist();
+    });
+    mk('✎', 'Load into Compose to edit', '', () => {
+      plEdit = i;
+      applyMessage(m);
+      renderPlaylist();
+      toast('Entry #' + (i + 1) + ' loaded into Compose');
+    });
+    mk('↑', 'Move earlier', '', () => moveEntry(i, -1));
+    mk('↓', 'Move later', '', () => moveEntry(i, 1));
+    mk('×', 'Remove', 'del', () => {
+      state.playlist.splice(i, 1);
+      if (plEdit === i) plEdit = -1; else if (plEdit > i) plEdit--;
+      if (plIndex >= state.playlist.length) plIndex = state.playlist.length - 1;
+      renderPlaylist(); save();
+    });
+
+    row.appendChild(ctl);
+    box.appendChild(row);
+  });
+}
+
+function moveEntry(i, d) {
+  const j = i + d;
+  if (j < 0 || j >= state.playlist.length) return;
+  const tmp = state.playlist[j];
+  state.playlist[j] = state.playlist[i];
+  state.playlist[i] = tmp;
+  if (plEdit === i) plEdit = j; else if (plEdit === j) plEdit = i;
+  if (plIndex === i) plIndex = j; else if (plIndex === j) plIndex = i;
+  renderPlaylist(); save();
+}
+
+function showEntry(i) {
+  const m = state.playlist[i];
+  if (!m) return;
+  const res = layoutMessage(m.text, m);
+  setBoard(res.matrix);
+}
+
+/* A message holds for its own number of seconds once it has actually landed.
+   Counting from the moment the drums start turning would spend most of a short
+   hold watching the board flip rather than reading it. */
+function scheduleNext() {
+  clearTimeout(plTimer);
+  const wait = () => {
+    for (let i = 0; i < tiles.length; i++) {
+      if (tiles[i].spinning) { plTimer = setTimeout(wait, 120); return; }
+    }
+    plTimer = setTimeout(advanceRotation, entrySecs(state.playlist[plIndex]) * 1000);
+  };
+  wait();
+}
 
 function advanceRotation() {
   if (!state.playlist.length) { stopRotation(); return; }
@@ -1387,30 +1563,72 @@ function advanceRotation() {
     while (n === plIndex) n = Math.floor(Math.random() * state.playlist.length);
     plIndex = n;
   } else {
-    plIndex = (plIndex + 1) % state.playlist.length;
+    const next = plIndex + 1;
+    if (next >= state.playlist.length) {
+      if (state.plLoop === false) {                 /* run once through, then stop */
+        stopRotation();
+        toast('Sequence finished');
+        return;
+      }
+      plIndex = 0;
+    } else {
+      plIndex = next;
+    }
   }
-  const m = state.playlist[plIndex];
-  const res = layoutMessage(m.text, m);
-  setBoard(res.matrix);
+  showEntry(plIndex);
   renderPlaylist();
+  scheduleNext();
 }
-function startRotation(restart) {
-  if (!state.playlist.length) { toast('Add a message to the rotation first'); return; }
+
+function startRotation() {
+  if (!state.playlist.length) { toast('Add a message to the sequence first'); return; }
   if (state.clock) { toast('Turn clock mode off first'); return; }
   plRunning = true;
   $('#plPlay').textContent = 'Stop rotation';
-  clearInterval(plTimer);
-  if (!restart) advanceRotation();
-  plTimer = setInterval(advanceRotation, state.plSec * 1000);
+  plIndex = 0;
+  showEntry(0);
+  renderPlaylist();
+  scheduleNext();
 }
 function stopRotation() {
   plRunning = false;
-  clearInterval(plTimer);
+  clearTimeout(plTimer);
   plTimer = null;
   $('#plPlay').textContent = 'Start rotation';
   renderPlaylist();
 }
 $('#plPlay').addEventListener('click', () => { plRunning ? stopRotation() : startRotation(); });
+
+$('#plAdd').addEventListener('click', () => {
+  state.playlist.push({ text: msgEl.value, h: state.h, v: state.v, wrap: state.wrap, secs: state.plSec });
+  renderPlaylist(); save();
+  toast('Added as #' + state.playlist.length);
+});
+$('#plClear').addEventListener('click', () => {
+  if (state.playlist.length && !confirm('Remove all ' + state.playlist.length + ' messages from the sequence?')) return;
+  state.playlist = []; plEdit = -1; plIndex = -1;
+  stopRotation(); save();
+});
+$('#plUpdate').addEventListener('click', () => {
+  if (plEdit < 0 || !state.playlist[plEdit]) { plEdit = -1; renderPlaylist(); return; }
+  const keep = state.playlist[plEdit].secs;
+  state.playlist[plEdit] = { text: msgEl.value, h: state.h, v: state.v, wrap: state.wrap, secs: keep };
+  toast('Entry #' + (plEdit + 1) + ' updated');
+  plEdit = -1;
+  renderPlaylist(); save();
+});
+$('#plCancelEdit').addEventListener('click', () => { plEdit = -1; renderPlaylist(); });
+
+$('#plSec').addEventListener('input', e => {
+  state.plSec = +e.target.value;
+  $('#plSecLbl').textContent = state.plSec;
+  save();
+  renderPlaylist();
+  if (plRunning) scheduleNext();
+});
+
+togWire('#plShuffle', () => state.plShuffle, v => state.plShuffle = v);
+togWire('#plLoop', () => state.plLoop !== false, v => state.plLoop = v);
 
 /* clock */
 let clockTimer = null, clockLast = '';
@@ -1472,10 +1690,33 @@ rangeWire('#stg', '#stgLbl', 'stagger');
   });
 })();
 
+togWire('#sweepTog', () => settings.sweep, v => settings.sweep = v);
 togWire('#sndTog', () => settings.sound, v => { settings.sound = v; if (v) audio.wake(); });
 togWire('#hiTog',  () => settings.retina, v => { settings.retina = v; fitCanvas(); });
-togWire('#frmTog', () => settings.frame,  v => { settings.frame = v; requestRender(); });
+togWire('#frmTog', () => settings.frame,  v => { settings.frame = v; bgCache.clear(); requestRender(); });
 togWire('#hideTog', () => settings.autoHide, v => { settings.autoHide = v; poke(); });
+
+/* The controls above are wired while `settings` and `state` still hold their
+   defaults; load() replaces both afterwards. This pushes the restored values
+   back into every control so the panel agrees with the board. */
+function syncUI() {
+  $('#spd').value = settings.stepMs;   $('#spdLbl').textContent = settings.stepMs;
+  $('#stg').value = settings.stagger;  $('#stgLbl').textContent = settings.stagger;
+  const vpc = Math.round(settings.volume * 100);
+  $('#vol').value = vpc;               $('#volLbl').textContent = vpc;
+  $('#sweepTog').classList.toggle('on', !!settings.sweep);
+  $('#sndTog').classList.toggle('on',   !!settings.sound);
+  $('#hiTog').classList.toggle('on',    !!settings.retina);
+  $('#frmTog').classList.toggle('on',   !!settings.frame);
+  $('#hideTog').classList.toggle('on',  !!settings.autoHide);
+  $('#plSec').value = state.plSec;     $('#plSecLbl').textContent = state.plSec;
+  $('#plLoop').classList.toggle('on', state.plLoop !== false);
+  $('#plShuffle').classList.toggle('on', !!state.plShuffle);
+  $('#clockStyle').value = state.clockStyle;
+  $('#clockTmpl').value = state.clockTmpl;
+  $('#clockTog').classList.toggle('on', !!state.clock);
+  syncSegs();
+}
 
 /* ---------------------------------------------------------------------------
    13. PNG EXPORT -- 1920 x 1080, tagged 300 DPI via a pHYs chunk
@@ -1576,21 +1817,14 @@ window.addEventListener('orientationchange', () => setTimeout(fitCanvas, 120));
 document.addEventListener('visibilitychange', () => { if (!document.hidden) requestRender(); });
 
 load();
-buildAtlas();
 fitCanvas();
 
 msgEl.value = state.text;
-syncSegs();
+syncUI();
 updateMeter();
 refreshSaved();
 renderPlaylist();
 redrawGrid();
-$('#plSec').value = state.plSec;
-$('#plSecLbl').textContent = state.plSec;
-$('#plShuffle').classList.toggle('on', !!state.plShuffle);
-$('#clockStyle').value = state.clockStyle;
-$('#clockTmpl').value = state.clockTmpl;
-$('#clockTog').classList.toggle('on', !!state.clock);
 audio.setVolume(settings.volume);
 poke();
 

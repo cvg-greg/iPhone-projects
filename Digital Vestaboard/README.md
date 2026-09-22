@@ -21,6 +21,12 @@ build step, no network, no dependencies.
   through its flaps until it reaches the character it needs, exactly as the
   mechanism does, so a tile travelling from `Z` to `B` rolls the long way round.
   Worst case is 71 flaps, about 2.7 seconds at the default speed.
+* **Every tile turns on every change.** A drum that already shows the right
+  character would otherwise sit still, which makes a one-word edit look like
+  nothing happened, so it takes the long way round instead — a full
+  revolution back to the same flap. The whole board breaks into motion and
+  settles into the new message. *Flip every tile* in Settings turns this off
+  for strictly minimal, mechanically faithful travel.
 * The last couple of flaps ease off as the drum settles, and each tile starts
   after a small random delay, so the board breaks into a rustle rather than
   marching in lockstep.
@@ -41,12 +47,24 @@ name.
 colour from the palette and tap, or drag to paint a run. *Read board* pulls
 whatever is currently displayed into the editor.
 
-**Playlist** — queue several messages and rotate through them on a timer, in
-order or shuffled. Clock mode puts the time on the board and re-flips it as the
-minute turns.
+**Playlist** — build a sequence of messages and let the board run it.
 
-**Settings** — flip speed, start stagger, volume, sound, 2× rendering, the
-enclosure, and PNG export.
+* Entries display **in the order listed**; the arrows move one up or down.
+* Each entry carries **its own hold time in seconds**, set in the field on its
+  row. The default for new entries is the slider below the list.
+* A hold is counted from the moment the tiles *land*, not from when they start
+  turning, so a 15-second entry is readable for 15 seconds rather than spending
+  most of that flipping.
+* **Loop** returns to the first message after the last. Switch it off and the
+  sequence plays once through and stops.
+* **Shuffle** picks the next entry at random instead of in order.
+* ▶ jumps straight to an entry, ✎ loads it back into Compose — edit it there,
+  then press *Update* to write it back to the same slot — and × removes it.
+
+Clock mode puts the time on the board and re-flips it as the minute turns.
+
+**Settings** — flip speed, start stagger, volume, sound, whether every tile
+turns on a change, 2× rendering, the enclosure, and PNG export.
 
 ### Tokens
 
@@ -78,6 +96,16 @@ software at the right physical size (6.4″ × 3.6″) rather than at 72 DPI.
 | `R` | re-flip the current message |
 | `P` | start/stop the rotation |
 | `⌘/Ctrl + Enter` | send, from the compose box |
+
+## Notes on the rendering
+
+The board is one canvas, not 132 elements. Each of the 72 flaps is drawn once
+into a sprite sheet built at the exact scale it will be blitted at, so painting
+a tile is a 1:1 pixel copy rather than a resample — that alone was the
+difference between 13 and 59 frames a second on a software rasteriser. The
+enclosure, with its wide drop shadow, is rendered once and kept. While the
+drums turn, only the tiles that are actually moving are repainted, each patched
+back from the cached background first.
 
 ## Notes
 
