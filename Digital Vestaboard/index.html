@@ -1,0 +1,1613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#000000">
+<title>Digital Vestaboard &mdash; 6 &times; 22 Split-Flap</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  :root {
+    --ui-bg: rgba(16,16,18,0.94);
+    --ui-line: #2b2b30;
+    --ui-line-soft: #202024;
+    --ui-text: #e9e8e4;
+    --ui-dim: #8e8e96;
+    --ui-accent: #d8ab3a;
+    --ui-accent-dim: rgba(216,171,58,0.16);
+    --ui-field: #161619;
+  }
+  html, body {
+    margin: 0; padding: 0; height: 100%; width: 100%;
+    background: #000; color: var(--ui-text); overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+  }
+
+  /* ---------- Stage ---------- */
+  #stage {
+    position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: #000;
+  }
+  #board {
+    display: block; background: #000;
+    image-rendering: auto;
+    /* sized by JS to preserve the 1920x1080 stage */
+  }
+
+  /* ---------- Menu button ---------- */
+  #menuBtn {
+    position: fixed; top: max(18px, env(safe-area-inset-top)); right: max(18px, env(safe-area-inset-right));
+    width: 46px; height: 46px; border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(22,22,24,0.72);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    cursor: pointer; z-index: 40; padding: 0;
+    transition: opacity .45s ease, transform .2s ease, background .2s ease;
+  }
+  #menuBtn:hover { background: rgba(38,38,42,0.86); }
+  #menuBtn:active { transform: scale(0.93); }
+  #menuBtn span { display: block; width: 18px; height: 1.5px; background: #dcdcd8; border-radius: 2px; transition: .25s; }
+  body.idle #menuBtn { opacity: 0; pointer-events: none; }
+  body.panel-open #menuBtn { opacity: 0; pointer-events: none; }
+
+  /* ---------- Control panel ---------- */
+  #panel {
+    position: fixed; top: 0; right: 0; height: 100%;
+    width: 440px; max-width: 94vw;
+    background: var(--ui-bg);
+    backdrop-filter: blur(22px) saturate(140%); -webkit-backdrop-filter: blur(22px) saturate(140%);
+    border-left: 1px solid var(--ui-line);
+    transform: translateX(101%);
+    transition: transform .34s cubic-bezier(.22,.8,.3,1);
+    z-index: 50; display: flex; flex-direction: column;
+    padding-top: env(safe-area-inset-top);
+    box-shadow: -30px 0 60px rgba(0,0,0,0.6);
+  }
+  body.panel-open #panel { transform: translateX(0); }
+
+  .p-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 18px 12px; border-bottom: 1px solid var(--ui-line-soft);
+  }
+  .p-title { font-size: 12px; letter-spacing: .22em; text-transform: uppercase; color: var(--ui-dim); }
+  .p-title b { color: var(--ui-text); font-weight: 600; letter-spacing: .18em; }
+  #closeBtn {
+    background: none; border: 1px solid var(--ui-line); color: var(--ui-dim);
+    width: 30px; height: 30px; border-radius: 8px; cursor: pointer; font-size: 15px; line-height: 1;
+  }
+  #closeBtn:hover { color: var(--ui-text); border-color: #3c3c42; }
+
+  .tabs { display: flex; border-bottom: 1px solid var(--ui-line-soft); padding: 0 10px; gap: 2px; flex: none; }
+  .tab {
+    flex: 1; background: none; border: none; border-bottom: 2px solid transparent;
+    color: var(--ui-dim); padding: 11px 4px 9px; font-size: 11px; letter-spacing: .12em;
+    text-transform: uppercase; cursor: pointer; font-family: inherit;
+  }
+  .tab:hover { color: var(--ui-text); }
+  .tab.on { color: var(--ui-accent); border-bottom-color: var(--ui-accent); }
+
+  .p-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px 18px 40px; }
+  .pane { display: none; }
+  .pane.on { display: block; }
+
+  .field { margin-bottom: 18px; }
+  .label {
+    display: block; font-size: 10px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--ui-dim); margin-bottom: 7px;
+  }
+  .hint { font-size: 11px; color: #6d6d75; line-height: 1.5; margin-top: 7px; }
+
+  .ruler {
+    font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+    font-size: 11px; color: #55555d; letter-spacing: .5px; white-space: pre; overflow: hidden;
+    padding-left: 10px; margin-bottom: 2px;
+  }
+  textarea#msg {
+    width: 100%; height: 132px; resize: vertical;
+    background: var(--ui-field); color: var(--ui-text);
+    border: 1px solid var(--ui-line); border-radius: 8px; padding: 9px 10px;
+    font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+    font-size: 13px; line-height: 1.55; letter-spacing: .5px; outline: none;
+  }
+  textarea#msg:focus { border-color: #4a4a52; }
+  #lineMeter { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+  .lm {
+    font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 10px;
+    color: var(--ui-dim); background: #1b1b1f; border: 1px solid var(--ui-line-soft);
+    border-radius: 4px; padding: 2px 6px;
+  }
+  .lm.over { color: #ff8b7a; border-color: #5a2a24; background: #241514; }
+
+  .row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .seg { display: flex; border: 1px solid var(--ui-line); border-radius: 8px; overflow: hidden; }
+  .seg button {
+    background: none; border: none; color: var(--ui-dim); font-family: inherit;
+    padding: 7px 11px; font-size: 11px; cursor: pointer; letter-spacing: .06em;
+    border-right: 1px solid var(--ui-line-soft);
+  }
+  .seg button:last-child { border-right: none; }
+  .seg button.on { background: var(--ui-accent-dim); color: var(--ui-accent); }
+  .seg button:hover:not(.on) { color: var(--ui-text); }
+
+  button.btn {
+    background: #202025; border: 1px solid var(--ui-line); color: var(--ui-text);
+    border-radius: 8px; padding: 9px 14px; font-size: 12px; cursor: pointer;
+    font-family: inherit; letter-spacing: .04em;
+  }
+  button.btn:hover { background: #2a2a31; border-color: #3d3d45; }
+  button.btn:active { transform: translateY(1px); }
+  button.btn.primary {
+    background: var(--ui-accent); border-color: var(--ui-accent); color: #1a1405; font-weight: 600;
+  }
+  button.btn.primary:hover { background: #e6b845; }
+  button.btn.wide { width: 100%; }
+  button.btn.sm { padding: 6px 10px; font-size: 11px; }
+
+  .swatches { display: flex; flex-wrap: wrap; gap: 6px; }
+  .sw {
+    width: 30px; height: 26px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.14);
+    cursor: pointer; padding: 0;
+  }
+  .sw:hover { outline: 1px solid var(--ui-accent); outline-offset: 1px; }
+
+  /* grid editor */
+  #gridWrap { overflow-x: auto; padding-bottom: 6px; }
+  #gridEd { display: grid; grid-template-columns: repeat(22, 1fr); gap: 2px; min-width: 374px; }
+  .cell {
+    aspect-ratio: 1 / 1.4; background: #141417; border: 1px solid #232328; border-radius: 2px;
+    color: #e9e8e4; font-size: 9px; font-family: "SF Mono", ui-monospace, Menlo, monospace;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    padding: 0; overflow: hidden; user-select: none; -webkit-user-select: none;
+  }
+  .cell:hover { outline: 1px solid var(--ui-accent); }
+  #palette { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 8px; }
+  .pk {
+    min-width: 25px; height: 25px; background: #1b1b1f; border: 1px solid var(--ui-line-soft);
+    border-radius: 4px; color: #d9d8d4; font-size: 11px; cursor: pointer; padding: 0 3px;
+    font-family: "SF Mono", ui-monospace, Menlo, monospace;
+  }
+  .pk.on { border-color: var(--ui-accent); background: var(--ui-accent-dim); color: var(--ui-accent); }
+  .pk.col { border-color: #4b4b52; }
+  .pk:hover { border-color: #4a4a52; }
+
+  /* playlist */
+  .pl-item {
+    display: flex; align-items: center; gap: 8px; background: #16161a;
+    border: 1px solid var(--ui-line-soft); border-radius: 8px; padding: 8px 10px; margin-bottom: 6px;
+  }
+  .pl-item .t {
+    flex: 1; font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 11px;
+    color: #c9c8c4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .pl-item.cur { border-color: var(--ui-accent); background: rgba(216,171,58,0.07); }
+  .ic {
+    background: none; border: none; color: var(--ui-dim); cursor: pointer; font-size: 13px;
+    padding: 2px 4px; line-height: 1; font-family: inherit;
+  }
+  .ic:hover { color: var(--ui-text); }
+  .ic.del:hover { color: #ff7d6b; }
+
+  /* settings */
+  input[type=range] { width: 100%; accent-color: var(--ui-accent); background: transparent; }
+  .sw-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--ui-line-soft); }
+  .sw-row:last-child { border-bottom: none; }
+  .sw-row .n { font-size: 12px; color: #d3d2ce; }
+  .sw-row .d { font-size: 10px; color: #6d6d75; margin-top: 2px; }
+  .toggle {
+    width: 42px; height: 24px; border-radius: 12px; background: #2a2a30; border: 1px solid var(--ui-line);
+    position: relative; cursor: pointer; flex: none; transition: background .2s;
+  }
+  .toggle::after {
+    content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px;
+    border-radius: 50%; background: #8e8e96; transition: .2s;
+  }
+  .toggle.on { background: var(--ui-accent-dim); border-color: var(--ui-accent); }
+  .toggle.on::after { left: 20px; background: var(--ui-accent); }
+
+  select, input[type=text], input[type=number] {
+    background: var(--ui-field); color: var(--ui-text); border: 1px solid var(--ui-line);
+    border-radius: 7px; padding: 7px 9px; font-family: inherit; font-size: 12px; outline: none;
+  }
+  select:focus, input[type=text]:focus { border-color: #4a4a52; }
+
+  #toast {
+    position: fixed; bottom: max(24px, env(safe-area-inset-bottom)); left: 50%;
+    transform: translate(-50%, 16px); background: rgba(22,22,25,0.95);
+    border: 1px solid var(--ui-line); color: var(--ui-text);
+    padding: 9px 16px; border-radius: 10px; font-size: 12px; letter-spacing: .03em;
+    opacity: 0; pointer-events: none; transition: .28s; z-index: 60;
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  }
+  #toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+  .kbd {
+    font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 10px;
+    background: #202026; border: 1px solid var(--ui-line); border-radius: 4px; padding: 1px 5px; color: #b6b5b1;
+  }
+</style>
+</head>
+<body>
+
+<div id="stage"><canvas id="board"></canvas></div>
+
+<button id="menuBtn" title="Control panel (M)" aria-label="Open control panel">
+  <span></span><span></span><span></span>
+</button>
+
+<aside id="panel" aria-label="Vestaboard control panel">
+  <div class="p-head">
+    <div class="p-title"><b>VESTABOARD</b> &nbsp;6 &times; 22</div>
+    <button id="closeBtn" title="Close (Esc)">&times;</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab on" data-pane="compose">Compose</button>
+    <button class="tab" data-pane="grid">Grid</button>
+    <button class="tab" data-pane="play">Playlist</button>
+    <button class="tab" data-pane="set">Settings</button>
+  </div>
+
+  <div class="p-body">
+
+    <!-- ============ COMPOSE ============ -->
+    <section class="pane on" id="pane-compose">
+      <div class="field">
+        <label class="label" for="msg">Message &mdash; 6 rows &times; 22 columns</label>
+        <div class="ruler" id="ruler"></div>
+        <textarea id="msg" spellcheck="false" autocapitalize="characters" placeholder="TYPE ANYTHING&#10;NEW LINE = NEW ROW"></textarea>
+        <div id="lineMeter"></div>
+        <div class="hint">
+          <span class="kbd">&#8984;/Ctrl + Enter</span> sends to the board.
+          Lowercase becomes uppercase. Unsupported characters drop to blanks.
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="label">Word wrap</label>
+        <div class="seg" id="wrapSeg">
+          <button data-wrap="1" class="on">Auto-fit words</button>
+          <button data-wrap="0">Literal lines</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="label">Horizontal</label>
+        <div class="seg" id="halignSeg">
+          <button data-h="left">Left</button>
+          <button data-h="center" class="on">Center</button>
+          <button data-h="right">Right</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="label">Vertical</label>
+        <div class="seg" id="valignSeg">
+          <button data-v="top">Top</button>
+          <button data-v="middle" class="on">Middle</button>
+          <button data-v="bottom">Bottom</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="label">Insert colour tile</label>
+        <div class="swatches" id="swatches"></div>
+        <div class="hint">Colour tokens like <b>{red}</b> occupy one tile each. <b>{time}</b>, <b>{date}</b>, <b>{day}</b> and <b>{deg}</b> are live tokens.</div>
+      </div>
+
+      <div class="field row">
+        <button class="btn primary" id="sendBtn">Send to board</button>
+        <button class="btn" id="clearBtn">Clear board</button>
+        <button class="btn" id="saveBtn">Save&hellip;</button>
+      </div>
+
+      <div class="field">
+        <label class="label">Saved messages</label>
+        <div class="row">
+          <select id="savedSel" style="flex:1"><option value="">&mdash; none saved &mdash;</option></select>
+          <button class="btn sm" id="loadSaved">Load</button>
+          <button class="btn sm" id="delSaved">Delete</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ GRID ============ -->
+    <section class="pane" id="pane-grid">
+      <div class="field">
+        <label class="label">Tile painter &mdash; tap a cell to place the selected tile</label>
+        <div id="gridWrap"><div id="gridEd"></div></div>
+      </div>
+      <div class="field">
+        <label class="label">Tile palette</label>
+        <div id="palette"></div>
+      </div>
+      <div class="field row">
+        <button class="btn primary" id="gridSend">Send to board</button>
+        <button class="btn" id="gridPull">Read board</button>
+        <button class="btn" id="gridFill">Fill all</button>
+        <button class="btn" id="gridClear">Clear</button>
+      </div>
+      <div class="hint">Drag across cells to paint. &ldquo;Read board&rdquo; pulls whatever is currently displayed into the editor.</div>
+    </section>
+
+    <!-- ============ PLAYLIST ============ -->
+    <section class="pane" id="pane-play">
+      <div class="field">
+        <label class="label">Rotation</label>
+        <div id="plList"></div>
+        <div class="row" style="margin-top:8px">
+          <button class="btn sm" id="plAdd">Add current message</button>
+          <button class="btn sm" id="plClear">Clear list</button>
+        </div>
+      </div>
+      <div class="field">
+        <label class="label">Hold each message for <b id="plSecLbl">30</b> seconds</label>
+        <input type="range" id="plSec" min="5" max="600" step="5" value="30">
+      </div>
+      <div class="sw-row">
+        <div><div class="n">Shuffle</div><div class="d">Pick the next message at random</div></div>
+        <div class="toggle" id="plShuffle"></div>
+      </div>
+      <div class="field row" style="margin-top:14px">
+        <button class="btn primary wide" id="plPlay">Start rotation</button>
+      </div>
+      <div class="field">
+        <label class="label">Live clock</label>
+        <div class="sw-row">
+          <div><div class="n">Clock mode</div><div class="d">Shows the time on the board, re-flipping every minute</div></div>
+          <div class="toggle" id="clockTog"></div>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <select id="clockStyle" style="flex:1">
+            <option value="big">Time only &mdash; large</option>
+            <option value="full">Time + day + date</option>
+            <option value="tmpl">Custom template</option>
+          </select>
+        </div>
+        <input type="text" id="clockTmpl" value="{time}" style="width:100%;margin-top:8px" placeholder="e.g. IT IS {time} ON {day}">
+        <div class="hint">Clock mode overrides the rotation while it is on.</div>
+      </div>
+    </section>
+
+    <!-- ============ SETTINGS ============ -->
+    <section class="pane" id="pane-set">
+      <div class="field">
+        <label class="label">Flip speed &mdash; <b id="spdLbl">38</b> ms per flap</label>
+        <input type="range" id="spd" min="16" max="110" step="1" value="38">
+      </div>
+      <div class="field">
+        <label class="label">Start stagger &mdash; <b id="stgLbl">260</b> ms spread</label>
+        <input type="range" id="stg" min="0" max="900" step="10" value="260">
+      </div>
+      <div class="field">
+        <label class="label">Volume &mdash; <b id="volLbl">55</b>%</label>
+        <input type="range" id="vol" min="0" max="100" step="1" value="55">
+      </div>
+
+      <div class="sw-row">
+        <div><div class="n">Flap sound</div><div class="d">Synthesised mechanical clicking</div></div>
+        <div class="toggle on" id="sndTog"></div>
+      </div>
+      <div class="sw-row">
+        <div><div class="n">Retina rendering</div><div class="d">2&times; canvas backing store &mdash; crisper, heavier</div></div>
+        <div class="toggle" id="hiTog"></div>
+      </div>
+      <div class="sw-row">
+        <div><div class="n">Show frame</div><div class="d">Brushed enclosure around the tiles</div></div>
+        <div class="toggle on" id="frmTog"></div>
+      </div>
+      <div class="sw-row">
+        <div><div class="n">Auto-hide menu button</div><div class="d">Fades out when the pointer rests</div></div>
+        <div class="toggle on" id="hideTog"></div>
+      </div>
+
+      <div class="field" style="margin-top:20px">
+        <label class="label">Output</label>
+        <div class="row">
+          <button class="btn" id="pngBtn">Export PNG &mdash; 1920&times;1080 @ 300&nbsp;DPI</button>
+          <button class="btn" id="fsBtn">Fullscreen</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="label">Shortcuts</label>
+        <div class="hint">
+          <span class="kbd">M</span> panel &nbsp;
+          <span class="kbd">Esc</span> close &nbsp;
+          <span class="kbd">F</span> fullscreen &nbsp;
+          <span class="kbd">R</span> re-flip &nbsp;
+          <span class="kbd">P</span> rotation
+        </div>
+      </div>
+
+      <div class="field">
+        <button class="btn wide" id="resetBtn">Reset everything</button>
+      </div>
+
+      <div class="hint" style="margin-top:22px;border-top:1px solid var(--ui-line-soft);padding-top:14px">
+        A digital homage to the mechanical split-flap displays of railway stations &mdash;
+        six rows of twenty-two flap drums, each carrying the full Vestaboard character set:
+        blanks, A&ndash;Z, 0&ndash;9, punctuation, seven colours, black and filled.
+      </div>
+    </section>
+
+  </div>
+</aside>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+/* ============================================================================
+   DIGITAL VESTABOARD
+   A 6 x 22 split-flap message board rendered on a 1920 x 1080 canvas.
+   Every tile is a drum of flaps carrying the full character set; changing the
+   board spins each drum forward through the flaps until it reaches its target,
+   exactly as the mechanical original does.
+   ========================================================================== */
+
+/* ---------------------------------------------------------------------------
+   1. THE CHARACTER DRUM
+   Codes follow the Vestaboard character map: 0 blank, 1-26 A-Z, 27-36 digits
+   (1-9 then 0), then punctuation, then the colour flaps. Gaps in the map are
+   real blank flaps on the drum, which is why the codes are not contiguous.
+   ------------------------------------------------------------------------- */
+const DRUM = (function () {
+  const d = new Array(72).fill(null).map(() => ({ kind: 'blank', ch: '', name: 'blank' }));
+  const put = (code, ch) => { d[code] = { kind: 'char', ch: ch, name: ch }; };
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach((c, i) => put(i + 1, c));
+  '123456789'.split('').forEach((c, i) => put(i + 27, c));
+  put(36, '0');
+  put(37, '!'); put(38, '@'); put(39, '#'); put(40, '$');
+  put(41, '('); put(42, ')'); put(44, '-'); put(46, '+');
+  put(47, '&'); put(48, '='); put(49, ';'); put(50, ':');
+  put(52, "'"); put(53, '"'); put(54, '%'); put(55, ',');
+  put(56, '.'); put(59, '/'); put(60, '?'); put(62, '°');
+  const colour = (code, name, hex) => { d[code] = { kind: 'colour', ch: '', name: name, hex: hex }; };
+  colour(63, 'red',    '#D8232A');
+  colour(64, 'orange', '#E4691C');
+  colour(65, 'yellow', '#EFC017');
+  colour(66, 'green',  '#1B9C4C');
+  colour(67, 'blue',   '#1D5BBF');
+  colour(68, 'violet', '#7B3E99');
+  colour(69, 'white',  '#E6E4DC');
+  colour(70, 'black',  '#0A0A0B');
+  colour(71, 'filled', '#F6F3EA');
+  return d;
+})();
+const NCODES = DRUM.length;
+
+/* text -> code, for everything typeable */
+const CHAR2CODE = (function () {
+  const m = Object.create(null);
+  m[' '] = 0;
+  for (let i = 0; i < NCODES; i++) if (DRUM[i].kind === 'char') m[DRUM[i].ch] = i;
+  /* forgiving aliases for characters the drum does not physically carry */
+  m['’'] = 52; m['‘'] = 52;            /* curly single quotes */
+  m['“'] = 53; m['”'] = 53;            /* curly double quotes */
+  m['–'] = 44; m['—'] = 44; m['_'] = 44; /* dashes            */
+  m['*'] = 46; m['\\'] = 59; m['|'] = 59;
+  return m;
+})();
+const COLOUR_TOKENS = { red: 63, orange: 64, yellow: 65, green: 66, blue: 67,
+                        violet: 68, purple: 68, white: 69, black: 70,
+                        filled: 71, fill: 71, blank: 0, space: 0 };
+
+/* ---------------------------------------------------------------------------
+   2. GEOMETRY  (all maths in a fixed 1920 x 1080 design space)
+   ------------------------------------------------------------------------- */
+const STAGE_W = 1920, STAGE_H = 1080;
+const COLS = 22, ROWS = 6;
+const GAP    = 4;                                   /* between tiles          */
+const FRAME  = 26;                                  /* enclosure thickness    */
+const MARGIN = 46;                                  /* stage edge -> tiles    */
+const TILE_W = (STAGE_W - MARGIN * 2 - GAP * (COLS - 1)) / COLS;
+const TILE_H = TILE_W * 1.42;
+const BOARD_W = COLS * TILE_W + (COLS - 1) * GAP;
+const BOARD_H = ROWS * TILE_H + (ROWS - 1) * GAP;
+const BOARD_X = (STAGE_W - BOARD_W) / 2;
+const BOARD_Y = (STAGE_H - BOARD_H) / 2;
+const RADIUS  = TILE_W * 0.085;
+
+const tileX = c => BOARD_X + c * (TILE_W + GAP);
+const tileY = r => BOARD_Y + r * (TILE_H + GAP);
+
+/* ---------------------------------------------------------------------------
+   3. GLYPH ATLAS
+   Each of the 72 flaps is pre-rendered once, at 2x, into a sprite sheet. Every
+   frame then costs only a couple of drawImage calls per tile, which is what
+   keeps 132 simultaneously spinning drums smooth on a phone.
+   ------------------------------------------------------------------------- */
+const SS = 2;                                       /* atlas supersample      */
+const ATLAS_COLS = 12;
+const CELL_W = Math.ceil(TILE_W * SS), CELL_H = Math.ceil(TILE_H * SS);
+let atlas = null;
+
+function roundRect(ctx, x, y, w, h, r) {
+  if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); return; }
+  r = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y,     x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x,     y + h, r);
+  ctx.arcTo(x,     y + h, x,     y,     r);
+  ctx.arcTo(x,     y,     x + w, y,     r);
+  ctx.closePath();
+}
+
+function buildAtlas() {
+  const rows = Math.ceil(NCODES / ATLAS_COLS);
+  const cv = document.createElement('canvas');
+  cv.width = ATLAS_COLS * CELL_W;
+  cv.height = rows * CELL_H;
+  const g = cv.getContext('2d');
+  for (let code = 0; code < NCODES; code++) {
+    const ox = (code % ATLAS_COLS) * CELL_W;
+    const oy = Math.floor(code / ATLAS_COLS) * CELL_H;
+    g.save();
+    g.translate(ox, oy);
+    drawFlapCell(g, DRUM[code], CELL_W, CELL_H);
+    g.restore();
+  }
+  atlas = cv;
+}
+
+/* one flap card: body, bevel, side rails, seam, glyph */
+function drawFlapCell(g, spec, w, h) {
+  const r = RADIUS * SS;
+  const mid = h / 2;
+
+  /* --- card body ------------------------------------------------------ */
+  roundRect(g, 0, 0, w, h, r);
+  g.save();
+  g.clip();
+
+  if (spec.kind === 'colour') {
+    g.fillStyle = spec.hex;
+    g.fillRect(0, 0, w, h);
+    /* the two halves of a coloured flap catch light slightly differently */
+    let sh = g.createLinearGradient(0, 0, 0, mid);
+    sh.addColorStop(0, 'rgba(255,255,255,0.10)');
+    sh.addColorStop(1, 'rgba(0,0,0,0.06)');
+    g.fillStyle = sh; g.fillRect(0, 0, w, mid);
+    sh = g.createLinearGradient(0, mid, 0, h);
+    sh.addColorStop(0, 'rgba(0,0,0,0.16)');
+    sh.addColorStop(1, 'rgba(0,0,0,0.02)');
+    g.fillStyle = sh; g.fillRect(0, mid, w, h - mid);
+  } else {
+    let gr = g.createLinearGradient(0, 0, 0, mid);
+    gr.addColorStop(0, '#26262a');
+    gr.addColorStop(1, '#141417');
+    g.fillStyle = gr; g.fillRect(0, 0, w, mid);
+    gr = g.createLinearGradient(0, mid, 0, h);
+    gr.addColorStop(0, '#1d1d21');
+    gr.addColorStop(1, '#0d0d10');
+    g.fillStyle = gr; g.fillRect(0, mid, w, h - mid);
+  }
+
+  /* --- spindle rails: the drum posts either side of the flap ----------- */
+  const rail = Math.max(1, w * 0.035);
+  g.fillStyle = 'rgba(0,0,0,0.42)';
+  g.fillRect(0, 0, rail, h);
+  g.fillRect(w - rail, 0, rail, h);
+  g.fillStyle = 'rgba(255,255,255,0.05)';
+  g.fillRect(rail, 0, 1 * SS, h);
+  g.fillRect(w - rail - 1 * SS, 0, 1 * SS, h);
+
+  /* --- glyph ----------------------------------------------------------- */
+  if (spec.kind === 'char') {
+    const fs = h * 0.625;
+    g.font = '600 ' + fs + 'px "Helvetica Neue", Helvetica, Arial, sans-serif';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.save();
+    g.translate(w / 2, mid + fs * 0.015);
+    g.scale(0.94, 1);                               /* condensed, like the original */
+    g.fillStyle = '#EFEDE6';
+    g.fillText(spec.ch, 0, 0);
+    g.restore();
+  }
+
+  /* --- the split: a hard shadow line where the two halves meet --------- */
+  const seam = Math.max(1.5, h * 0.012);
+  const sg = g.createLinearGradient(0, mid - seam, 0, mid + seam);
+  sg.addColorStop(0,    'rgba(0,0,0,0.30)');
+  sg.addColorStop(0.48, 'rgba(0,0,0,0.92)');
+  sg.addColorStop(0.52, 'rgba(0,0,0,0.92)');
+  sg.addColorStop(1,    'rgba(255,255,255,0.055)');
+  g.fillStyle = sg;
+  g.fillRect(0, mid - seam, w, seam * 2);
+
+  /* --- overall bevel ---------------------------------------------------- */
+  const bev = g.createLinearGradient(0, 0, w, h);
+  bev.addColorStop(0,    'rgba(255,255,255,0.045)');
+  bev.addColorStop(0.35, 'rgba(255,255,255,0)');
+  bev.addColorStop(1,    'rgba(0,0,0,0.18)');
+  g.fillStyle = bev;
+  g.fillRect(0, 0, w, h);
+  g.restore();
+
+  /* --- edge ------------------------------------------------------------- */
+  roundRect(g, 0.5, 0.5, w - 1, h - 1, r);
+  g.strokeStyle = 'rgba(0,0,0,0.85)';
+  g.lineWidth = SS;
+  g.stroke();
+}
+
+/* atlas source rect helpers (top half / bottom half / whole) */
+function srcOf(code) {
+  return { x: (code % ATLAS_COLS) * CELL_W, y: Math.floor(code / ATLAS_COLS) * CELL_H };
+}
+
+/* ---------------------------------------------------------------------------
+   4. BOARD STATE + DRUM PHYSICS
+   ------------------------------------------------------------------------- */
+const tiles = [];
+for (let r = 0; r < ROWS; r++) {
+  for (let c = 0; c < COLS; c++) {
+    tiles.push({
+      r: r, c: c,
+      code: 0,          /* flap currently facing front  */
+      target: 0,        /* flap we are spinning towards */
+      left: 0,          /* flaps still to turn          */
+      t: 0,             /* 0..1 through the current flap*/
+      delay: 0,         /* ms before this drum starts   */
+      spinning: false
+    });
+  }
+}
+const tileAt = (r, c) => tiles[r * COLS + c];
+
+/* A mouse can reveal the menu button just by moving, so it may fade out. A
+   touch screen cannot, so the button stays put there unless asked otherwise. */
+const COARSE = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+const settings = {
+  stepMs: 38, stagger: 260, volume: 0.55, sound: true,
+  retina: false, frame: true, autoHide: !COARSE
+};
+
+function setBoard(matrix) {
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const tl = tileAt(r, c);
+      const want = matrix[r][c] | 0;
+      if (want === tl.code && !tl.spinning) continue;
+      tl.target = want;
+      tl.left = (want - tl.code + NCODES) % NCODES;
+      if (tl.left === 0) { tl.spinning = false; tl.t = 0; continue; }
+      tl.t = 0;
+      tl.delay = Math.random() * settings.stagger;
+      tl.spinning = true;
+    }
+  }
+  audio.wake();
+  requestRender();
+}
+
+function currentMatrix() {
+  const m = [];
+  for (let r = 0; r < ROWS; r++) {
+    const row = [];
+    for (let c = 0; c < COLS; c++) row.push(tileAt(r, c).spinning ? tileAt(r, c).target : tileAt(r, c).code);
+    m.push(row);
+  }
+  return m;
+}
+const blankMatrix = () => Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
+
+/* advance every spinning drum by dt milliseconds */
+function step(dt) {
+  let busy = false, clicks = 0;
+  for (let i = 0; i < tiles.length; i++) {
+    const tl = tiles[i];
+    if (!tl.spinning) continue;
+    busy = true;
+    if (tl.delay > 0) { tl.delay -= dt; continue; }
+
+    /* the last couple of flaps ease off, the way a real drum settles */
+    const ease = tl.left === 1 ? 1.85 : tl.left === 2 ? 1.32 : 1;
+    tl.t += dt / (settings.stepMs * ease);
+
+    while (tl.t >= 1) {
+      tl.t -= 1;
+      tl.code = (tl.code + 1) % NCODES;
+      tl.left--;
+      if (clicks < 7) { audio.click(tl.left === 0); clicks++; }
+      if (tl.left <= 0) { tl.spinning = false; tl.t = 0; break; }
+    }
+  }
+  return busy;
+}
+
+/* ---------------------------------------------------------------------------
+   5. RENDERER
+   Draws the whole 1920 x 1080 stage at an arbitrary scale, so the live canvas
+   and the PNG export share one code path.
+   ------------------------------------------------------------------------- */
+function renderStage(ctx, scale) {
+  ctx.save();
+  ctx.setTransform(scale, 0, 0, scale, 0, 0);
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, STAGE_W, STAGE_H);
+
+  if (settings.frame) drawFrame(ctx);
+
+  /* the recessed well the drums sit in */
+  roundRect(ctx, BOARD_X - 10, BOARD_Y - 10, BOARD_W + 20, BOARD_H + 20, RADIUS + 6);
+  ctx.fillStyle = '#050506';
+  ctx.fill();
+
+  for (let i = 0; i < tiles.length; i++) drawTile(ctx, tiles[i]);
+
+  ctx.restore();
+}
+
+function drawFrame(ctx) {
+  const x = BOARD_X - FRAME, y = BOARD_Y - FRAME;
+  const w = BOARD_W + FRAME * 2, h = BOARD_H + FRAME * 2;
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.9)';
+  ctx.shadowBlur = 48;
+  ctx.shadowOffsetY = 14;
+  roundRect(ctx, x, y, w, h, RADIUS + FRAME * 0.55);
+  const g = ctx.createLinearGradient(x, y, x, y + h);
+  g.addColorStop(0,    '#2a2a2e');
+  g.addColorStop(0.06, '#141416');
+  g.addColorStop(0.94, '#0d0d0f');
+  g.addColorStop(1,    '#1f1f23');
+  ctx.fillStyle = g;
+  ctx.fill();
+  ctx.restore();
+
+  roundRect(ctx, x + 0.5, y + 0.5, w - 1, h - 1, RADIUS + FRAME * 0.55);
+  ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+}
+
+function drawTile(ctx, tl) {
+  const x = tileX(tl.c), y = tileY(tl.r);
+  const halfH = TILE_H / 2;
+  const mid = y + halfH;
+
+  if (!tl.spinning || tl.delay > 0) {
+    blitWhole(ctx, tl.code, x, y);
+    return;
+  }
+
+  const from = tl.code;
+  const to = (tl.code + 1) % NCODES;
+
+  /* the settled halves: the next flap's top is already exposed behind the
+     falling card, while the outgoing flap's bottom is still in place */
+  blitHalf(ctx, to,   x, y,   'top');
+  blitHalf(ctx, from, x, mid, 'bottom');
+
+  /* the card in flight */
+  const t = tl.t;
+  if (t < 0.5) {
+    const a = (t / 0.5) * (Math.PI / 2);            /* 0 -> 90deg, falling  */
+    const s = Math.cos(a);
+    ctx.save();
+    ctx.translate(x, mid);
+    ctx.scale(1, s);
+    ctx.translate(-x, -mid);
+    blitHalf(ctx, from, x, y, 'top');
+    ctx.fillStyle = 'rgba(0,0,0,' + (0.50 * (1 - s)).toFixed(3) + ')';
+    ctx.fillRect(x, y, TILE_W, halfH);
+    ctx.restore();
+  } else {
+    const a = ((1 - t) / 0.5) * (Math.PI / 2);      /* 90 -> 0deg, landing  */
+    const s = Math.cos(a);
+    ctx.save();
+    ctx.translate(x, mid);
+    ctx.scale(1, s);
+    ctx.translate(-x, -mid);
+    blitHalf(ctx, to, x, mid, 'bottom');
+    ctx.fillStyle = 'rgba(0,0,0,' + (0.42 * (1 - s)).toFixed(3) + ')';
+    ctx.fillRect(x, mid, TILE_W, halfH);
+    ctx.restore();
+  }
+
+  /* contact shadow the moving card throws on the halves below it */
+  const cast = 0.30 * (1 - Math.abs(t - 0.5) * 2);
+  if (cast > 0.004) {
+    ctx.save();
+    ctx.globalAlpha = cast;
+    ctx.fillStyle = castShadow(ctx, tl.r);
+    ctx.fillRect(x, mid, TILE_W, halfH * 0.62);
+    ctx.restore();
+  }
+}
+
+/* cached per row, per context: black at the seam fading down the lower half */
+function castShadow(ctx, row) {
+  let cache = ctx.__vestaShadow;
+  if (!cache) cache = ctx.__vestaShadow = [];
+  if (!cache[row]) {
+    const mid = tileY(row) + TILE_H / 2;
+    const g = ctx.createLinearGradient(0, mid, 0, mid + TILE_H / 2 * 0.62);
+    g.addColorStop(0, 'rgba(0,0,0,1)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    cache[row] = g;
+  }
+  return cache[row];
+}
+
+function blitWhole(ctx, code, x, y) {
+  const s = srcOf(code);
+  ctx.drawImage(atlas, s.x, s.y, CELL_W, CELL_H, x, y, TILE_W, TILE_H);
+}
+function blitHalf(ctx, code, x, y, which) {
+  const s = srcOf(code);
+  const sy = which === 'top' ? s.y : s.y + CELL_H / 2;
+  ctx.drawImage(atlas, s.x, sy, CELL_W, CELL_H / 2, x, y, TILE_W, TILE_H / 2);
+}
+
+/* ---------------------------------------------------------------------------
+   6. CANVAS SIZING + FRAME LOOP
+   ------------------------------------------------------------------------- */
+const canvas = document.getElementById('board');
+const cctx = canvas.getContext('2d', { alpha: false });
+let renderScale = 1, needsRender = true, lastT = 0, running = false;
+
+function fitCanvas() {
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const s = Math.min(vw / STAGE_W, vh / STAGE_H);
+  const cssW = Math.round(STAGE_W * s), cssH = Math.round(STAGE_H * s);
+  canvas.style.width = cssW + 'px';
+  canvas.style.height = cssH + 'px';
+  renderScale = settings.retina ? 2 : 1;
+  canvas.width = STAGE_W * renderScale;
+  canvas.height = STAGE_H * renderScale;
+  cctx.imageSmoothingEnabled = true;
+  cctx.imageSmoothingQuality = 'high';
+  requestRender();
+}
+function requestRender() { needsRender = true; if (!running) { running = true; lastT = 0; requestAnimationFrame(loop); } }
+
+function loop(now) {
+  const dt = lastT ? Math.min(now - lastT, 60) : 16;
+  lastT = now;
+  const busy = step(dt);
+  if (busy || needsRender) {
+    renderStage(cctx, renderScale);
+    needsRender = false;
+  }
+  if (busy) { requestAnimationFrame(loop); }
+  else { running = false; lastT = 0; }
+}
+
+/* ---------------------------------------------------------------------------
+   7. SOUND  -- a short filtered noise burst per flap, voice-limited
+   ------------------------------------------------------------------------- */
+const audio = (function () {
+  let ac = null, noise = null, bus = null, voices = 0;
+  function init() {
+    if (ac) return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    ac = new AC();
+    const len = Math.floor(ac.sampleRate * 0.06);
+    noise = ac.createBuffer(1, len, ac.sampleRate);
+    const d = noise.getChannelData(0);
+    for (let i = 0; i < len; i++) {
+      const env = Math.pow(1 - i / len, 6);
+      d[i] = (Math.random() * 2 - 1) * env;
+    }
+    bus = ac.createGain();
+    bus.gain.value = settings.volume;
+    const comp = ac.createDynamicsCompressor();
+    comp.threshold.value = -18; comp.ratio.value = 8;
+    bus.connect(comp); comp.connect(ac.destination);
+  }
+  return {
+    wake: function () { init(); if (ac && ac.state === 'suspended') ac.resume(); },
+    setVolume: function (v) { if (bus) bus.gain.value = v; },
+    click: function (last) {
+      if (!settings.sound || settings.volume <= 0) return;
+      init();
+      if (!ac || ac.state !== 'running' || voices > 14) return;
+      voices++;
+      const src = ac.createBufferSource();
+      src.buffer = noise;
+      src.playbackRate.value = 0.82 + Math.random() * 0.5;
+      const bp = ac.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = 1500 + Math.random() * 2600;
+      bp.Q.value = 0.9;
+      const g = ac.createGain();
+      g.gain.value = (last ? 0.5 : 0.22) * (0.65 + Math.random() * 0.7);
+      src.connect(bp); bp.connect(g); g.connect(bus);
+      src.onended = function () { voices--; };
+      src.start();
+    }
+  };
+})();
+
+/* ---------------------------------------------------------------------------
+   8. TEXT -> TILES
+   ------------------------------------------------------------------------- */
+let lastDropped = 0;
+
+function liveTokens(text) {
+  const now = new Date();
+  const hh = now.getHours(), mm = String(now.getMinutes()).padStart(2, '0');
+  const h12 = ((hh + 11) % 12) + 1;
+  const days = ['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'];
+  const mons = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  return text
+    .replace(/\{time\}/gi, h12 + ':' + mm + (hh < 12 ? ' AM' : ' PM'))
+    .replace(/\{time24\}/gi, String(hh).padStart(2, '0') + ':' + mm)
+    .replace(/\{day\}/gi, days[now.getDay()])
+    .replace(/\{date\}/gi, now.getDate() + ' ' + mons[now.getMonth()] + ' ' + now.getFullYear());
+}
+
+/* a line of text -> [{code, space}] */
+function parseLine(str) {
+  const out = [];
+  let i = 0;
+  while (i < str.length) {
+    if (str[i] === '{') {
+      const end = str.indexOf('}', i);
+      if (end > i) {
+        const name = str.slice(i + 1, end).trim().toLowerCase();
+        if (Object.prototype.hasOwnProperty.call(COLOUR_TOKENS, name)) {
+          out.push({ code: COLOUR_TOKENS[name], space: false });
+          i = end + 1; continue;
+        }
+        if (name === 'deg' || name === 'degree') {
+          out.push({ code: 62, space: false }); i = end + 1; continue;
+        }
+      }
+    }
+    const raw = str[i];
+    if (raw === ' ' || raw === '\t') { out.push({ code: 0, space: true }); i++; continue; }
+    const up = raw.toUpperCase();
+    const code = CHAR2CODE[up];
+    if (code === undefined) { lastDropped++; out.push({ code: 0, space: true }); }
+    else out.push({ code: code, space: false });
+    i++;
+  }
+  return out;
+}
+
+/* [{code,space}] -> array of rows, greedily wrapped to 22 columns */
+function wrapUnits(units) {
+  const rows = [];
+  let line = [];
+  let word = [];
+  const pushWord = () => {
+    if (!word.length) return;
+    if (line.length && line.length + 1 + word.length > COLS) { rows.push(line); line = []; }
+    else if (line.length) line.push({ code: 0, space: true });
+    if (word.length > COLS) {                       /* word longer than the row: hard split */
+      while (word.length > COLS) {
+        if (line.length) { rows.push(line); line = []; }
+        rows.push(word.slice(0, COLS));
+        word = word.slice(COLS);
+      }
+    }
+    line = line.concat(word);
+    word = [];
+  };
+  for (let i = 0; i < units.length; i++) {
+    if (units[i].space) pushWord();
+    else word.push(units[i]);
+  }
+  pushWord();
+  if (line.length) rows.push(line);
+  if (!rows.length) rows.push([]);
+  return rows;
+}
+
+function layoutMessage(text, opts) {
+  lastDropped = 0;
+  const wrap = opts.wrap !== false;
+  const h = opts.h || 'center', v = opts.v || 'middle';
+  const src = liveTokens(text).replace(/\r/g, '').split('\n');
+
+  let rows = [];
+  for (let i = 0; i < src.length; i++) {
+    const units = parseLine(src[i]);
+    if (wrap) {
+      /* trailing spaces never survive a wrap */
+      const trimmed = units.slice();
+      while (trimmed.length && trimmed[trimmed.length - 1].space) trimmed.pop();
+      if (!trimmed.length) { rows.push([]); continue; }
+      rows = rows.concat(wrapUnits(trimmed));
+    } else {
+      rows.push(units.slice(0, COLS));
+    }
+  }
+  const overflow = Math.max(0, rows.length - ROWS);
+  rows = rows.slice(0, ROWS);
+
+  /* vertical placement */
+  const pad = ROWS - rows.length;
+  let before = 0;
+  if (v === 'middle') before = Math.floor(pad / 2);
+  else if (v === 'bottom') before = pad;
+  const out = blankMatrix();
+
+  for (let i = 0; i < rows.length; i++) {
+    const codes = rows[i].map(u => u.code).slice(0, COLS);
+    let start = 0;
+    const slack = COLS - codes.length;
+    if (h === 'center') start = Math.floor(slack / 2);
+    else if (h === 'right') start = slack;
+    const target = before + i;
+    if (target < 0 || target >= ROWS) continue;
+    for (let j = 0; j < codes.length; j++) out[target][start + j] = codes[j];
+  }
+  return { matrix: out, overflow: overflow, dropped: lastDropped };
+}
+
+/* ---------------------------------------------------------------------------
+   9. CONTROL PANEL
+   ------------------------------------------------------------------------- */
+const $ = sel => document.querySelector(sel);
+const $$ = sel => Array.prototype.slice.call(document.querySelectorAll(sel));
+
+const state = {
+  text: '{red}{orange}{yellow}{green}{blue}{violet}\nDIGITAL VESTABOARD\nSIX ROWS OF TWENTY-TWO\nTAP THE MENU TO WRITE\n{violet}{blue}{green}{yellow}{orange}{red}',
+  h: 'center', v: 'middle', wrap: true,
+  saved: {},                 /* name -> {text,h,v,wrap}     */
+  playlist: [],              /* [{text,h,v,wrap}]           */
+  plSec: 30, plShuffle: false,
+  clock: false, clockStyle: 'big', clockTmpl: '{time}'
+};
+
+const STORE_KEY = 'vestaboard.v1';
+function save() {
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify({ state: state, settings: settings }));
+  } catch (e) { /* private browsing, storage full: the board still works */ }
+}
+function load() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return;
+    const o = JSON.parse(raw);
+    if (o && o.state) Object.assign(state, o.state);
+    if (o && o.settings) Object.assign(settings, o.settings);
+  } catch (e) { /* ignore a corrupt payload and start fresh */ }
+}
+
+let toastTimer = null;
+function toast(msg) {
+  const el = $('#toast');
+  el.textContent = msg;
+  el.classList.add('on');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('on'), 2400);
+}
+
+/* ---- panel open/close ---- */
+function openPanel() { document.body.classList.add('panel-open'); audio.wake(); }
+function closePanel() { document.body.classList.remove('panel-open'); }
+$('#menuBtn').addEventListener('click', openPanel);
+$('#closeBtn').addEventListener('click', closePanel);
+
+$$('.tab').forEach(t => t.addEventListener('click', () => {
+  $$('.tab').forEach(x => x.classList.toggle('on', x === t));
+  $$('.pane').forEach(p => p.classList.toggle('on', p.id === 'pane-' + t.dataset.pane));
+  if (t.dataset.pane === 'grid') pullGrid();
+}));
+
+/* ---- idle fade of the menu button ---- */
+let idleTimer = null;
+function poke() {
+  document.body.classList.remove('idle');
+  clearTimeout(idleTimer);
+  if (!settings.autoHide) return;
+  idleTimer = setTimeout(() => document.body.classList.add('idle'), 3200);
+}
+['pointermove', 'pointerdown', 'keydown', 'touchstart'].forEach(ev =>
+  window.addEventListener(ev, poke, { passive: true }));
+
+/* ---- compose ---- */
+const msgEl = $('#msg');
+
+(function buildRuler() {
+  let s = '';
+  for (let i = 1; i <= COLS; i++) s += (i % 5 === 0 ? String(i % 10) : (i === 1 ? '1' : '·'));
+  $('#ruler').textContent = s;
+})();
+
+function updateMeter() {
+  const box = $('#lineMeter');
+  box.innerHTML = '';
+  const lines = liveTokens(msgEl.value).split('\n');
+  lines.forEach((ln, i) => {
+    const n = parseLine(ln).length;
+    const d = document.createElement('div');
+    d.className = 'lm' + (!state.wrap && n > COLS ? ' over' : '');
+    d.textContent = 'R' + (i + 1) + ' ' + n + '/' + COLS;
+    box.appendChild(d);
+  });
+  if (lines.length > ROWS && !state.wrap) {
+    const d = document.createElement('div');
+    d.className = 'lm over';
+    d.textContent = (lines.length - ROWS) + ' row(s) over';
+    box.appendChild(d);
+  }
+}
+
+function sendCompose(quiet) {
+  state.text = msgEl.value;
+  const res = layoutMessage(state.text, state);
+  setBoard(res.matrix);
+  save();
+  if (!quiet) {
+    if (res.overflow) toast(res.overflow + ' row(s) did not fit and were cut');
+    else if (res.dropped) toast(res.dropped + ' character(s) are not on the drum');
+  }
+}
+
+msgEl.addEventListener('input', () => { state.text = msgEl.value; updateMeter(); });
+msgEl.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendCompose(); }
+});
+$('#sendBtn').addEventListener('click', () => sendCompose());
+$('#clearBtn').addEventListener('click', () => { setBoard(blankMatrix()); toast('Board cleared'); });
+
+function segWire(sel, attr, apply) {
+  $$(sel + ' button').forEach(b => b.addEventListener('click', () => {
+    $$(sel + ' button').forEach(x => x.classList.toggle('on', x === b));
+    apply(b.dataset[attr]);
+    save(); updateMeter(); sendCompose(true);
+  }));
+}
+segWire('#halignSeg', 'h', v => state.h = v);
+segWire('#valignSeg', 'v', v => state.v = v);
+segWire('#wrapSeg', 'wrap', v => state.wrap = v === '1');
+
+/* colour swatch chips insert their token at the caret */
+(function buildSwatches() {
+  const box = $('#swatches');
+  [63, 64, 65, 66, 67, 68, 69, 70, 71, 0].forEach(code => {
+    const spec = DRUM[code];
+    const b = document.createElement('button');
+    b.className = 'sw';
+    b.title = spec.kind === 'colour' ? spec.name : 'blank';
+    b.style.background = spec.kind === 'colour' ? spec.hex : '#141417';
+    if (code === 0) b.textContent = '';
+    b.addEventListener('click', () => {
+      const token = '{' + (spec.kind === 'colour' ? spec.name : 'blank') + '}';
+      const s = msgEl.selectionStart, e = msgEl.selectionEnd;
+      msgEl.value = msgEl.value.slice(0, s) + token + msgEl.value.slice(e);
+      msgEl.selectionStart = msgEl.selectionEnd = s + token.length;
+      msgEl.focus();
+      state.text = msgEl.value;
+      updateMeter();
+    });
+    box.appendChild(b);
+  });
+})();
+
+/* ---- saved messages ---- */
+function refreshSaved() {
+  const sel = $('#savedSel');
+  const names = Object.keys(state.saved).sort();
+  sel.innerHTML = names.length ? '' : '<option value="">&mdash; none saved &mdash;</option>';
+  names.forEach(n => {
+    const o = document.createElement('option');
+    o.value = n; o.textContent = n;
+    sel.appendChild(o);
+  });
+}
+$('#saveBtn').addEventListener('click', () => {
+  const name = prompt('Save this message as:');
+  if (!name) return;
+  state.saved[name.trim()] = { text: msgEl.value, h: state.h, v: state.v, wrap: state.wrap };
+  refreshSaved(); save(); toast('Saved "' + name.trim() + '"');
+});
+$('#loadSaved').addEventListener('click', () => {
+  const n = $('#savedSel').value;
+  if (!n || !state.saved[n]) return;
+  applyMessage(state.saved[n]);
+  sendCompose();
+});
+$('#delSaved').addEventListener('click', () => {
+  const n = $('#savedSel').value;
+  if (!n) return;
+  delete state.saved[n];
+  refreshSaved(); save(); toast('Deleted');
+});
+
+function applyMessage(m) {
+  msgEl.value = m.text;
+  state.text = m.text;
+  state.h = m.h || 'center'; state.v = m.v || 'middle';
+  state.wrap = m.wrap !== false;
+  syncSegs(); updateMeter();
+}
+function syncSegs() {
+  $$('#halignSeg button').forEach(b => b.classList.toggle('on', b.dataset.h === state.h));
+  $$('#valignSeg button').forEach(b => b.classList.toggle('on', b.dataset.v === state.v));
+  $$('#wrapSeg button').forEach(b => b.classList.toggle('on', (b.dataset.wrap === '1') === state.wrap));
+}
+
+/* ---------------------------------------------------------------------------
+   10. GRID PAINTER
+   ------------------------------------------------------------------------- */
+let gridBuf = blankMatrix();
+let brush = 63;
+let painting = false;
+const cellEls = [];
+
+(function buildGrid() {
+  const g = $('#gridEd');
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const b = document.createElement('button');
+      b.className = 'cell';
+      b.dataset.r = r; b.dataset.c = c;
+      b.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        painting = true;
+        paintCell(r, c);
+        b.setPointerCapture && b.releasePointerCapture(e.pointerId);
+      });
+      b.addEventListener('pointerenter', () => { if (painting) paintCell(r, c); });
+      g.appendChild(b);
+      cellEls.push(b);
+    }
+  }
+  window.addEventListener('pointerup', () => { painting = false; });
+  window.addEventListener('pointercancel', () => { painting = false; });
+})();
+
+function paintCell(r, c) {
+  gridBuf[r][c] = brush;
+  drawCell(r, c);
+}
+function drawCell(r, c) {
+  const el = cellEls[r * COLS + c];
+  const spec = DRUM[gridBuf[r][c]];
+  if (spec.kind === 'colour') {
+    el.style.background = spec.hex;
+    el.textContent = '';
+  } else {
+    el.style.background = '#141417';
+    el.textContent = spec.ch || '';
+  }
+}
+function redrawGrid() { for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) drawCell(r, c); }
+function pullGrid() { gridBuf = currentMatrix(); redrawGrid(); }
+
+(function buildPalette() {
+  const p = $('#palette');
+  const codes = [0];
+  for (let i = 1; i < NCODES; i++) if (DRUM[i].kind !== 'blank') codes.push(i);
+  codes.forEach(code => {
+    const spec = DRUM[code];
+    const b = document.createElement('button');
+    b.className = 'pk' + (code === brush ? ' on' : '');
+    b.dataset.code = code;
+    if (spec.kind === 'colour') { b.className += ' col'; b.style.background = spec.hex; b.title = spec.name; }
+    else if (spec.kind === 'char') b.textContent = spec.ch;
+    else { b.textContent = '·'; b.title = 'blank'; }
+    b.addEventListener('click', () => {
+      brush = code;
+      $$('#palette .pk').forEach(x => x.classList.toggle('on', x === b));
+    });
+    p.appendChild(b);
+  });
+})();
+
+$('#gridSend').addEventListener('click', () => { setBoard(gridBuf.map(r => r.slice())); });
+$('#gridPull').addEventListener('click', pullGrid);
+$('#gridFill').addEventListener('click', () => {
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) gridBuf[r][c] = brush;
+  redrawGrid();
+});
+$('#gridClear').addEventListener('click', () => { gridBuf = blankMatrix(); redrawGrid(); });
+
+/* ---------------------------------------------------------------------------
+   11. PLAYLIST + CLOCK
+   ------------------------------------------------------------------------- */
+let plIndex = -1, plTimer = null, plRunning = false;
+
+function renderPlaylist() {
+  const box = $('#plList');
+  box.innerHTML = '';
+  if (!state.playlist.length) {
+    box.innerHTML = '<div class="hint">Nothing in rotation yet. Compose a message, then add it here.</div>';
+    return;
+  }
+  state.playlist.forEach((m, i) => {
+    const row = document.createElement('div');
+    row.className = 'pl-item' + (plRunning && i === plIndex ? ' cur' : '');
+    const t = document.createElement('div');
+    t.className = 't';
+    t.textContent = (m.text || '').replace(/\n/g, ' · ').slice(0, 60) || '(blank)';
+    row.appendChild(t);
+    const mk = (label, title, cls, fn) => {
+      const b = document.createElement('button');
+      b.className = 'ic' + (cls ? ' ' + cls : '');
+      b.textContent = label; b.title = title;
+      b.addEventListener('click', fn);
+      row.appendChild(b);
+    };
+    mk('↑', 'Move up', '', () => {
+      if (i === 0) return;
+      const tmp = state.playlist[i - 1];
+      state.playlist[i - 1] = state.playlist[i]; state.playlist[i] = tmp;
+      renderPlaylist(); save();
+    });
+    mk('↓', 'Move down', '', () => {
+      if (i === state.playlist.length - 1) return;
+      const tmp = state.playlist[i + 1];
+      state.playlist[i + 1] = state.playlist[i]; state.playlist[i] = tmp;
+      renderPlaylist(); save();
+    });
+    mk('▶', 'Show now', '', () => { applyMessage(m); sendCompose(true); });
+    mk('×', 'Remove', 'del', () => {
+      state.playlist.splice(i, 1);
+      renderPlaylist(); save();
+    });
+    box.appendChild(row);
+  });
+}
+
+$('#plAdd').addEventListener('click', () => {
+  state.playlist.push({ text: msgEl.value, h: state.h, v: state.v, wrap: state.wrap });
+  renderPlaylist(); save(); toast('Added to rotation');
+});
+$('#plClear').addEventListener('click', () => { state.playlist = []; renderPlaylist(); save(); });
+$('#plSec').addEventListener('input', e => {
+  state.plSec = +e.target.value;
+  $('#plSecLbl').textContent = state.plSec;
+  save();
+  if (plRunning) { startRotation(true); }
+});
+
+function togWire(sel, get, set) {
+  const el = $(sel);
+  el.classList.toggle('on', !!get());
+  el.addEventListener('click', () => {
+    set(!get());
+    el.classList.toggle('on', !!get());
+    save();
+  });
+}
+togWire('#plShuffle', () => state.plShuffle, v => state.plShuffle = v);
+
+function advanceRotation() {
+  if (!state.playlist.length) { stopRotation(); return; }
+  if (state.plShuffle && state.playlist.length > 1) {
+    let n = plIndex;
+    while (n === plIndex) n = Math.floor(Math.random() * state.playlist.length);
+    plIndex = n;
+  } else {
+    plIndex = (plIndex + 1) % state.playlist.length;
+  }
+  const m = state.playlist[plIndex];
+  const res = layoutMessage(m.text, m);
+  setBoard(res.matrix);
+  renderPlaylist();
+}
+function startRotation(restart) {
+  if (!state.playlist.length) { toast('Add a message to the rotation first'); return; }
+  if (state.clock) { toast('Turn clock mode off first'); return; }
+  plRunning = true;
+  $('#plPlay').textContent = 'Stop rotation';
+  clearInterval(plTimer);
+  if (!restart) advanceRotation();
+  plTimer = setInterval(advanceRotation, state.plSec * 1000);
+}
+function stopRotation() {
+  plRunning = false;
+  clearInterval(plTimer);
+  plTimer = null;
+  $('#plPlay').textContent = 'Start rotation';
+  renderPlaylist();
+}
+$('#plPlay').addEventListener('click', () => { plRunning ? stopRotation() : startRotation(); });
+
+/* clock */
+let clockTimer = null, clockLast = '';
+function clockText() {
+  if (state.clockStyle === 'big') return '{time}';
+  if (state.clockStyle === 'full') return '{time}\n{day}\n{date}';
+  return state.clockTmpl;
+}
+function tickClock() {
+  if (!state.clock) return;
+  const t = liveTokens(clockText());
+  if (t === clockLast) return;
+  clockLast = t;
+  const res = layoutMessage(clockText(), { h: 'center', v: 'middle', wrap: true });
+  setBoard(res.matrix);
+}
+function setClock(on) {
+  state.clock = on;
+  clearInterval(clockTimer);
+  clockLast = '';
+  if (on) { stopRotation(); tickClock(); clockTimer = setInterval(tickClock, 2000); }
+  save();
+}
+togWire('#clockTog', () => state.clock, setClock);
+$('#clockStyle').addEventListener('change', e => {
+  state.clockStyle = e.target.value; clockLast = ''; save(); tickClock();
+});
+$('#clockTmpl').addEventListener('input', e => {
+  state.clockTmpl = e.target.value; clockLast = ''; save();
+  if (state.clock && state.clockStyle === 'tmpl') tickClock();
+});
+
+/* ---------------------------------------------------------------------------
+   12. SETTINGS
+   ------------------------------------------------------------------------- */
+function rangeWire(sel, lbl, key, fmt, after) {
+  const el = $(sel);
+  el.value = settings[key];
+  $(lbl).textContent = fmt ? fmt(settings[key]) : settings[key];
+  el.addEventListener('input', e => {
+    settings[key] = +e.target.value;
+    $(lbl).textContent = fmt ? fmt(settings[key]) : settings[key];
+    if (after) after();
+    save();
+  });
+}
+rangeWire('#spd', '#spdLbl', 'stepMs');
+rangeWire('#stg', '#stgLbl', 'stagger');
+
+(function volWire() {
+  const el = $('#vol');
+  el.value = Math.round(settings.volume * 100);
+  $('#volLbl').textContent = Math.round(settings.volume * 100);
+  el.addEventListener('input', e => {
+    settings.volume = +e.target.value / 100;
+    $('#volLbl').textContent = e.target.value;
+    audio.setVolume(settings.volume);
+    save();
+  });
+})();
+
+togWire('#sndTog', () => settings.sound, v => { settings.sound = v; if (v) audio.wake(); });
+togWire('#hiTog',  () => settings.retina, v => { settings.retina = v; fitCanvas(); });
+togWire('#frmTog', () => settings.frame,  v => { settings.frame = v; requestRender(); });
+togWire('#hideTog', () => settings.autoHide, v => { settings.autoHide = v; poke(); });
+
+/* ---------------------------------------------------------------------------
+   13. PNG EXPORT -- 1920 x 1080, tagged 300 DPI via a pHYs chunk
+   ------------------------------------------------------------------------- */
+const CRC_TABLE = (function () {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+function crc32(bytes) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+function tagDPI(buffer, dpi) {
+  const src = new Uint8Array(buffer);
+  const ppm = Math.round(dpi / 0.0254);             /* pixels per metre */
+  const chunk = new Uint8Array(21);                 /* 4 len + 4 type + 9 data + 4 crc */
+  const dv = new DataView(chunk.buffer);
+  dv.setUint32(0, 9);
+  chunk[4] = 0x70; chunk[5] = 0x48; chunk[6] = 0x59; chunk[7] = 0x73;  /* pHYs */
+  dv.setUint32(8, ppm);
+  dv.setUint32(12, ppm);
+  chunk[16] = 1;                                    /* unit = metre */
+  dv.setUint32(17, crc32(chunk.subarray(4, 17)));
+  const at = 33;                                    /* right after IHDR */
+  const out = new Uint8Array(src.length + chunk.length);
+  out.set(src.subarray(0, at), 0);
+  out.set(chunk, at);
+  out.set(src.subarray(at), at + chunk.length);
+  return out;
+}
+function exportPNG() {
+  const cv = document.createElement('canvas');
+  cv.width = STAGE_W; cv.height = STAGE_H;
+  const g = cv.getContext('2d');
+  g.imageSmoothingQuality = 'high';
+  renderStage(g, 1);
+  cv.toBlob(blob => {
+    if (!blob) { toast('Export failed'); return; }
+    blob.arrayBuffer().then(buf => {
+      const tagged = tagDPI(buf, 300);
+      const url = URL.createObjectURL(new Blob([tagged], { type: 'image/png' }));
+      const a = document.createElement('a');
+      const d = new Date();
+      const stamp = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') +
+                    String(d.getDate()).padStart(2, '0') + '-' +
+                    String(d.getHours()).padStart(2, '0') + String(d.getMinutes()).padStart(2, '0');
+      a.href = url;
+      a.download = 'vestaboard-' + stamp + '.png';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      toast('Exported 1920 × 1080 at 300 DPI');
+    });
+  }, 'image/png');
+}
+$('#pngBtn').addEventListener('click', exportPNG);
+
+$('#fsBtn').addEventListener('click', toggleFullscreen);
+function toggleFullscreen() {
+  const el = document.documentElement;
+  if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+    (el.requestFullscreen || el.webkitRequestFullscreen || function () {}).call(el);
+  } else {
+    (document.exitFullscreen || document.webkitExitFullscreen || function () {}).call(document);
+  }
+}
+
+$('#resetBtn').addEventListener('click', () => {
+  if (!confirm('Reset messages, playlist and settings?')) return;
+  try { localStorage.removeItem(STORE_KEY); } catch (e) {}
+  location.reload();
+});
+
+/* ---------------------------------------------------------------------------
+   14. KEYBOARD
+   ------------------------------------------------------------------------- */
+window.addEventListener('keydown', e => {
+  const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName);
+  if (e.key === 'Escape') { closePanel(); return; }
+  if (typing) return;
+  const k = e.key.toLowerCase();
+  if (k === 'm') { document.body.classList.contains('panel-open') ? closePanel() : openPanel(); }
+  else if (k === 'f') toggleFullscreen();
+  else if (k === 'r') { const m = currentMatrix(); setBoard(blankMatrix()); setTimeout(() => setBoard(m), 120); }
+  else if (k === 'p') { plRunning ? stopRotation() : startRotation(); }
+});
+
+/* ---------------------------------------------------------------------------
+   15. BOOT
+   ------------------------------------------------------------------------- */
+window.addEventListener('resize', fitCanvas);
+window.addEventListener('orientationchange', () => setTimeout(fitCanvas, 120));
+document.addEventListener('visibilitychange', () => { if (!document.hidden) requestRender(); });
+
+load();
+buildAtlas();
+fitCanvas();
+
+msgEl.value = state.text;
+syncSegs();
+updateMeter();
+refreshSaved();
+renderPlaylist();
+redrawGrid();
+$('#plSec').value = state.plSec;
+$('#plSecLbl').textContent = state.plSec;
+$('#plShuffle').classList.toggle('on', !!state.plShuffle);
+$('#clockStyle').value = state.clockStyle;
+$('#clockTmpl').value = state.clockTmpl;
+$('#clockTog').classList.toggle('on', !!state.clock);
+audio.setVolume(settings.volume);
+poke();
+
+/* first flip: start from blank and let the drums run up to the message */
+setTimeout(() => {
+  if (state.clock) { setClock(true); }
+  else {
+    const res = layoutMessage(state.text, state);
+    setBoard(res.matrix);
+  }
+}, 260);
+
+/* a first touch anywhere unlocks audio on iOS */
+window.addEventListener('pointerdown', function once() {
+  audio.wake();
+  window.removeEventListener('pointerdown', once);
+}, { once: true });
+</script>
+</body>
+</html>
