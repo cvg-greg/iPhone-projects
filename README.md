@@ -19,14 +19,14 @@ Either clone this repo, or on GitHub press **Code → Download ZIP**, unzip, and
 drag the `Music GenEngine` folder onto your Desktop so it lives at
 `~/Desktop/Music GenEngine` — then double-click `index.html` inside it.
 
-## 🚩 Digital Vestaboard
+## 🚩 Retro Tile Sign Board
 
 A digital split-flap message board — six rows of twenty-two mechanical flap
 drums, rendered at 1920 × 1080 on black. Type a message and the tiles roll
 through the character set until they land on it, clicking as they go. Colour
-flaps, a tile painter, a rotating playlist, clock mode, and PNG export at
+flaps, a tile painter, a timed message sequence, clock mode, and PNG export at
 300 DPI.
 
-**→ Open [`Digital Vestaboard/index.html`](Digital%20Vestaboard/index.html) in your browser.**
+**→ Open [`Retro Tile Sign Board/index.html`](Retro%20Tile%20Sign%20Board/index.html) in your browser.**
 
-Full guide: [`Digital Vestaboard/README.md`](Digital%20Vestaboard/README.md)
+Full guide: [`Retro Tile Sign Board/README.md`](Retro%20Tile%20Sign%20Board/README.md)

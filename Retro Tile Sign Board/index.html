@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#000000">
-<title>Digital Vestaboard &mdash; 6 &times; 22 Split-Flap</title>
+<title>Retro Tile Sign Board &mdash; 6 &times; 22 Split-Flap</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; }
   :root {
@@ -259,9 +259,9 @@
   <span></span><span></span><span></span>
 </button>
 
-<aside id="panel" aria-label="Vestaboard control panel">
+<aside id="panel" aria-label="Sign board control panel">
   <div class="p-head">
-    <div class="p-title"><b>VESTABOARD</b> &nbsp;6 &times; 22</div>
+    <div class="p-title"><b>RETRO TILE SIGN BOARD</b> &nbsp;6 &times; 22</div>
     <button id="closeBtn" title="Close (Esc)">&times;</button>
   </div>
 
@@ -498,8 +498,8 @@
 
       <div class="hint" style="margin-top:22px;border-top:1px solid var(--ui-line-soft);padding-top:14px">
         A digital homage to the mechanical split-flap displays of railway stations &mdash;
-        six rows of twenty-two flap drums, each carrying the full Vestaboard character set:
-        blanks, A&ndash;Z, 0&ndash;9, punctuation, seven colours, black and filled.
+        six rows of twenty-two flap drums, each carrying a full seventy-two flap
+        character set: blanks, A&ndash;Z, 0&ndash;9, punctuation, seven colours, black and filled.
       </div>
     </section>
 
@@ -511,7 +511,7 @@
 <script>
 'use strict';
 /* ============================================================================
-   DIGITAL VESTABOARD
+   RETRO TILE SIGN BOARD
    A 6 x 22 split-flap message board rendered on a 1920 x 1080 canvas.
    Every tile is a drum of flaps carrying the full character set; changing the
    board spins each drum forward through the flaps until it reaches its target,
@@ -520,7 +520,7 @@
 
 /* ---------------------------------------------------------------------------
    1. THE CHARACTER DRUM
-   Codes follow the Vestaboard character map: 0 blank, 1-26 A-Z, 27-36 digits
+   Codes follow the usual 22x6 split-flap map: 0 blank, 1-26 A-Z, 27-36 digits
    (1-9 then 0), then punctuation, then the colour flaps. Gaps in the map are
    real blank flaps on the drum, which is why the codes are not contiguous.
    ------------------------------------------------------------------------- */
@@ -1042,10 +1042,10 @@ function drawTile(ctx, tl) {
 
 /* cached per row, per context: black at the seam fading down the lower half */
 function castShadow(ctx, row) {
-  let cache = ctx.__vestaShadow;
-  if (!cache || ctx.__vestaShadowSC !== SC) {
-    cache = ctx.__vestaShadow = [];
-    ctx.__vestaShadowSC = SC;
+  let cache = ctx.__tileShadow;
+  if (!cache || ctx.__tileShadowSC !== SC) {
+    cache = ctx.__tileShadow = [];
+    ctx.__tileShadowSC = SC;
   }
   if (!cache[row]) {
     const mid = dTileY(row) + DH / 2;
@@ -1339,7 +1339,7 @@ const $ = sel => document.querySelector(sel);
 const $$ = sel => Array.prototype.slice.call(document.querySelectorAll(sel));
 
 const state = {
-  text: '{red}{orange}{yellow}{green}{blue}{violet}\nDIGITAL VESTABOARD\nSIX ROWS OF TWENTY-TWO\nTAP THE MENU TO WRITE\n{violet}{blue}{green}{yellow}{orange}{red}',
+  text: '{red}{orange}{yellow}{green}{blue}{violet}\nRETRO TILE SIGN BOARD\nSIX ROWS OF TWENTY-TWO\nTAP THE MENU TO WRITE\n{violet}{blue}{green}{yellow}{orange}{red}',
   h: 'center', v: 'middle', wrap: true,
   saved: {},                 /* name -> {text,h,v,wrap}     */
   playlist: [],              /* [{text,h,v,wrap}]           */
@@ -1347,7 +1347,7 @@ const state = {
   clock: false, clockStyle: 'big', clockTmpl: '{time}'
 };
 
-const STORE_KEY = 'vestaboard.v1';
+const STORE_KEY = 'retrotilesign.v1';
 function save() {
   try {
     localStorage.setItem(STORE_KEY, JSON.stringify({ state: state, settings: settings }));
@@ -1962,7 +1962,7 @@ function exportPNG() {
                     String(d.getDate()).padStart(2, '0') + '-' +
                     String(d.getHours()).padStart(2, '0') + String(d.getMinutes()).padStart(2, '0');
       a.href = url;
-      a.download = 'vestaboard-' + stamp + '.png';
+      a.download = 'tile-sign-' + stamp + '.png';
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 4000);
       toast('Exported 1920 × 1080 at 300 DPI');

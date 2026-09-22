@@ -1,8 +1,8 @@
-# Digital Vestaboard
+# Retro Tile Sign Board
 
 A digital split-flap message board — six rows of twenty-two flap drums, the
-kind that used to clatter through the departures at a railway station, and that
-Vestaboard sells as a mechanical wall piece today.
+kind that used to clatter through the departures at a railway station before
+the screens took over.
 
 **Open `index.html` in a browser. That's the whole install.** One file, no
 build step, no network, no dependencies.
@@ -153,10 +153,12 @@ Messages, saved presets, the playlist and all settings persist in
 `localStorage`, so the board comes back as you left it. *Reset everything* in
 Settings clears it.
 
-The character codes follow the Vestaboard map (0 blank, 1–26 `A–Z`, 27–36 the
-digits `1`–`9` then `0`, punctuation above that, colours at 63–71). The gaps in
-that map — 43, 45, 51, 57, 58, 61 — are real blank flaps on the drum, which is
-why a tile passes through blanks partway round.
+The character codes follow the layout these 22 × 6 boards conventionally use:
+0 blank, 1–26 `A–Z`, 27–36 the digits `1`–`9` then `0`, punctuation above that,
+colours at 63–71. The gaps in that map — 43, 45, 51, 57, 58, 61 — are real
+blank flaps on the drum, which is why a tile passes through blanks partway
+round.
 
-This is an independent homage. It is not affiliated with Vestaboard, and it
-talks to no hardware.
+This is an independent piece of software. It is not affiliated with, endorsed
+by, or compatible with any commercial split-flap product or manufacturer, and
+it talks to no hardware.
