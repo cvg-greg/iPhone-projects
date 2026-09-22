@@ -30,8 +30,23 @@ build step, no network, no dependencies.
 * The last couple of flaps ease off as the drum settles, and each tile starts
   after a small random delay, so the board breaks into a rustle rather than
   marching in lockstep.
-* The clicking is synthesised — a filtered noise burst per flap, voice-limited
-  so 132 drums in motion sound like a board, not a hailstorm.
+* The board wakes with a **self-test**: colour bars wipe across the tiles, hold,
+  and the message rolls in behind them. It is also on a button and the `B` key,
+  and *Wipe & restore* (or `W`) clears the board away and brings it back.
+* Changes travel rather than happening all at once. **Transition** picks the
+  order the drums are released in — a cascade left to right or right to left,
+  row by row, diagonally, out from the centre, in from the edges, scattered, or
+  all together — and **Transition spread** sets how long the wave takes to
+  cross.
+* The clicking is **sampled**. Seven short recordings-in-all-but-name — six flap
+  strikes and one heavier settle — are baked into the file as WAV data, picked
+  at random, pitch-varied per strike, and panned to the column they came from,
+  so a cascade is heard to travel across the board as well as seen. They were
+  synthesised offline by `tools/make-clicks.py` (an impact transient plus damped
+  resonant modes, the way a plastic flap hitting a stack actually behaves), so
+  nothing is fetched from the network and no third-party audio is involved.
+  A full sweep fires around 350 strikes a second, dense enough to read as one
+  rattle, with every one of the 132 landings getting through.
 
 ## The control panel
 
@@ -63,8 +78,9 @@ whatever is currently displayed into the editor.
 
 Clock mode puts the time on the board and re-flips it as the minute turns.
 
-**Settings** — flip speed, start stagger, volume, sound, whether every tile
-turns on a change, 2× rendering, the enclosure, and PNG export.
+**Settings** — flip speed, transition pattern and spread, the two wipes, volume,
+sound, the startup self-test, whether every tile turns on a change, 2×
+rendering, the enclosure, and PNG export.
 
 ### Tokens
 
@@ -94,8 +110,18 @@ software at the right physical size (6.4″ × 3.6″) rather than at 72 DPI.
 | `Esc` | close the panel |
 | `F` | fullscreen |
 | `R` | re-flip the current message |
+| `B` | run the self-test wipe |
+| `W` | wipe the board away and back |
 | `P` | start/stop the rotation |
 | `⌘/Ctrl + Enter` | send, from the compose box |
+
+## Rebuilding the sounds
+
+`tools/make-clicks.py` regenerates the embedded audio. It needs nothing but the
+Python standard library, and prints the base64 block to paste over `CLICK_WAV`
+and `THUNK_WAV` in `index.html`. Edit the modal frequencies and decay times in
+`synth()` to change the character of the board — longer decays and lower modes
+give a heavier, more wooden flap.
 
 ## Notes on the rendering
 
