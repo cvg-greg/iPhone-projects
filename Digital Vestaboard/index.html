@@ -459,7 +459,7 @@
         <div class="toggle on" id="sndTog"></div>
       </div>
       <div class="sw-row">
-        <div><div class="n">Retina rendering</div><div class="d">2&times; canvas backing store &mdash; crisper, heavier</div></div>
+        <div><div class="n">Retina rendering</div><div class="d">2&times; canvas backing store. Follows your display by default &mdash; turn it off to trade sharpness for speed</div></div>
         <div class="toggle" id="hiTog"></div>
       </div>
       <div class="sw-row">
@@ -584,9 +584,9 @@ const RADIUS  = TILE_W * 0.085;
 
 /* ---------------------------------------------------------------------------
    3. GLYPH ATLAS
-   Each of the 72 flaps is pre-rendered once, at 2x, into a sprite sheet. Every
-   frame then costs only a couple of drawImage calls per tile, which is what
-   keeps 132 simultaneously spinning drums smooth on a phone.
+   Each of the 72 flaps is pre-rendered once into a sprite sheet. Every frame
+   then costs only a couple of drawImage calls per tile, which is what keeps
+   132 simultaneously spinning drums smooth even at a 2x backing store.
    ------------------------------------------------------------------------- */
 const ATLAS_COLS = 12;
 let atlas = null;
@@ -750,7 +750,8 @@ const COARSE = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').ma
 const settings = {
   stepMs: 38, stagger: 520, volume: 0.55, sound: true, sweep: true,
   pattern: 'cascade', boot: true,
-  retina: false, frame: true, autoHide: !COARSE
+  retina: (window.devicePixelRatio || 1) > 1.25,
+  frame: true, autoHide: !COARSE
 };
 
 /* Changing the message turns the drums. A tile whose character is not

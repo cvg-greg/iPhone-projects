@@ -115,6 +115,20 @@ software at the right physical size (6.4″ × 3.6″) rather than at 72 DPI.
 | `P` | start/stop the rotation |
 | `⌘/Ctrl + Enter` | send, from the compose box |
 
+## Display
+
+Built for a desktop screen. The board holds a 16:9 stage and scales to fill
+whatever window it is given, so it works full-screen on a monitor or in a
+window alongside other things, and `F` goes fullscreen.
+
+**Retina rendering** follows your display: on a HiDPI screen it renders into a
+2× backing store so the tiles stay sharp, and on a 1× screen it does not
+bother. That is four times the pixels to fill, which is free on any machine
+with a GPU-accelerated canvas and not free on one without — the switch in
+Settings overrides the default in either direction. Turning it off costs
+sharpness, never speed of the animation itself: the flip is driven by elapsed
+time, so a slower machine shows fewer frames rather than a slower board.
+
 ## Rebuilding the sounds
 
 `tools/make-clicks.py` regenerates the embedded audio. It needs nothing but the
