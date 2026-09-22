@@ -21,7 +21,7 @@ drag the `Music GenEngine` folder onto your Desktop so it lives at
 
 ## 🚩 Retro Tile Sign Board
 
-A digital split-flap message board — six rows of twenty-two mechanical flap
+A digital split-flap message board — eight rows of twenty-five mechanical flap
 drums, rendered at 1920 × 1080 on black. Type a message and the tiles roll
 through the character set until they land on it, clicking as they go. Colour
 flaps, a tile painter, a timed message sequence, clock mode, and PNG export at

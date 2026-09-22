@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#000000">
-<title>Retro Tile Sign Board &mdash; 6 &times; 22 Split-Flap</title>
+<title>Retro Tile Sign Board &mdash; 8 &times; 25 Split-Flap</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; }
   :root {
@@ -19,6 +19,10 @@
     --ui-accent: #d8ab3a;
     --ui-accent-dim: rgba(216,171,58,0.16);
     --ui-field: #161619;
+    /* the composer and the grid editor are laid out in columns, so they have
+       to know how wide the board is; applyGridMetrics() re-asserts this from
+       COLS at boot, which keeps the CSS from drifting if the grid changes */
+    --cols: 25;
   }
   html, body {
     margin: 0; padding: 0; height: 100%; width: 100%;
@@ -104,13 +108,13 @@
   }
   .hint { font-size: 11px; color: #6d6d75; line-height: 1.5; margin-top: 7px; }
 
-  /* The composer is exactly as wide as the board: 22 tiles. Anything past
-     that wraps onto the next visual line and is tinted, so an over-long row
-     is visible where it happens rather than only in a counter. */
+  /* The composer is exactly as wide as the board. Anything past that wraps
+     onto the next visual line and is tinted, so an over-long row is visible
+     where it happens rather than only in a counter. */
   .msg-outer {
     font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
     font-size: 13px; line-height: 1.55; letter-spacing: 0;
-    width: calc(22ch + 22px);          /* 22 tiles + padding + border */
+    width: calc(var(--cols) * 1ch + 22px);   /* tiles + padding + border */
     max-width: 100%;
   }
   /* only the layer and the textarea live in here, so `inset: 0` puts one
@@ -138,7 +142,7 @@
   textarea#msg {
     position: relative; z-index: 1;
     display: block;                     /* no baseline gap under the box */
-    height: 150px; resize: vertical;
+    height: 190px; resize: vertical;   /* eight rows without scrolling */
     background: transparent; outline: none;
     color: transparent;                 /* the text you see is the layer below */
     caret-color: var(--ui-text);
@@ -189,7 +193,8 @@
 
   /* grid editor */
   #gridWrap { overflow-x: auto; padding-bottom: 6px; }
-  #gridEd { display: grid; grid-template-columns: repeat(22, 1fr); gap: 2px; min-width: 374px; }
+  #gridEd { display: grid; grid-template-columns: repeat(var(--cols), 1fr); gap: 2px;
+            min-width: calc(var(--cols) * 17px); }
   .cell {
     aspect-ratio: 1 / 1.4; background: #141417; border: 1px solid #232328; border-radius: 2px;
     color: #e9e8e4; font-size: 9px; font-family: "SF Mono", ui-monospace, Menlo, monospace;
@@ -327,7 +332,7 @@
 
 <aside id="panel" aria-label="Sign board control panel">
   <div class="p-head">
-    <div class="p-title"><b>RETRO TILE SIGN BOARD</b> &nbsp;6 &times; 22</div>
+    <div class="p-title"><b>RETRO TILE SIGN BOARD</b> &nbsp;<span id="hdrDims"></span></div>
     <button id="closeBtn" title="Close (Esc)">&times;</button>
   </div>
 
@@ -344,7 +349,7 @@
     <!-- ============ COMPOSE ============ -->
     <section class="pane on" id="pane-compose">
       <div class="field">
-        <label class="label" for="msg">Message &mdash; 6 rows &times; 22 columns</label>
+        <label class="label" for="msg">Message &mdash; <span id="gridDims"></span></label>
         <div class="msg-outer">
           <div class="ruler" id="ruler"></div>
           <div class="msg-wrap" id="msgWrap">
@@ -597,7 +602,7 @@
 
       <div class="hint" style="margin-top:22px;border-top:1px solid var(--ui-line-soft);padding-top:14px">
         A digital homage to the mechanical split-flap displays of railway stations &mdash;
-        six rows of twenty-two flap drums, each carrying a full seventy-two flap
+        eight rows of twenty-five flap drums, each carrying a full seventy-two flap
         character set: blanks, A&ndash;Z, 0&ndash;9, punctuation, seven colours, black and filled.
       </div>
     </section>
@@ -804,7 +809,7 @@ const COLOUR_TOKENS = { red: 63, orange: 64, yellow: 65, green: 66, blue: 67,
    2. GEOMETRY  (all maths in a fixed 1920 x 1080 design space)
    ------------------------------------------------------------------------- */
 const STAGE_W = 1920, STAGE_H = 1080;
-const COLS = 22, ROWS = 6;
+const COLS = 25, ROWS = 8;
 const GAP_X  = 4;                                   /* between columns        */
 const GAP_Y  = 10;                                  /* between rows           */
 const FRAME  = 26;                                  /* enclosure thickness    */
@@ -822,7 +827,7 @@ const RADIUS  = TILE_W * 0.085;
    3. GLYPH ATLAS
    Each of the 72 flaps is pre-rendered once into a sprite sheet. Every frame
    then costs only a couple of drawImage calls per tile, which is what keeps
-   132 simultaneously spinning drums smooth even at a 2x backing store.
+   200 simultaneously spinning drums smooth even at a 2x backing store.
    ------------------------------------------------------------------------- */
 const ATLAS_COLS = 12;
 let atlas = null;
@@ -1016,7 +1021,7 @@ function flapMs(left, from) {
 }
 
 /* When each drum is released. A cascade hands the start time across the board
-   column by column, so the change travels as a wave instead of all 132 drums
+   column by column, so the change travels as a wave instead of all 200 drums
    letting go at once. */
 function tileDelay(pattern, r, c) {
   const S = settings.stagger;
@@ -1051,7 +1056,7 @@ function setBoard(matrix, opts) {
       tl.durScale = durScale;
       /* no two drums are hung quite the same, so none of them turn at quite
          the same rate; without this the board reads as one sequencer rather
-         than as a hundred and thirty-two separate mechanisms */
+         than as two hundred separate mechanisms */
       tl.friction = 0.90 + Math.random() * 0.20;
       /* a drum with a short way to go still starts at speed: the wind-down is
          cut to fit its journey rather than swallowing the whole of it */
@@ -1180,7 +1185,7 @@ function step(dt) {
    ------------------------------------------------------------------------- */
 /* The enclosure is static art with an expensive 48px shadow blur behind it,
    so it is rendered once per scale and kept. Redrawing it every frame was
-   costing more than all 132 drums put together. */
+   costing more than all 200 drums put together. */
 const bgCache = new Map();
 let bgFrameFlag = null;
 
@@ -1539,7 +1544,7 @@ function parseLine(str) {
   return out;
 }
 
-/* [{code,space}] -> array of rows, greedily wrapped to 22 columns */
+/* [{code,space}] -> array of rows, greedily wrapped to COLS columns */
 function wrapUnits(units) {
   const rows = [];
   let line = [];
@@ -1617,7 +1622,7 @@ const $ = sel => document.querySelector(sel);
 const $$ = sel => Array.prototype.slice.call(document.querySelectorAll(sel));
 
 const state = {
-  text: '{red}{orange}{yellow}{green}{blue}{violet}\nRETRO TILE SIGN BOARD\nSIX ROWS OF TWENTY-TWO\nTAP THE MENU TO WRITE\n{violet}{blue}{green}{yellow}{orange}{red}',
+  text: '{red}{orange}{yellow}{green}{blue}{violet}\nRETRO TILE SIGN BOARD\nEIGHT ROWS OF TWENTY-FIVE\nTAP THE MENU TO WRITE\nANY MESSAGE THAT FITS\nTHE GRID WILL FLIP UP\n{violet}{blue}{green}{yellow}{orange}{red}',
   h: 'center', v: 'middle', wrap: true,
   saved: {},                 /* name -> {text,h,v,wrap}     */
   playlist: [],              /* [{text,h,v,wrap}]           */
@@ -1644,7 +1649,13 @@ function load() {
     state.schedule = state.schedule.filter(r => r && typeof r.time === 'string' && r.entry);
     state.schedule.forEach(r => { if (!Array.isArray(r.days)) r.days = [0,1,2,3,4,5,6]; });
     state.playlist = state.playlist.filter(m => m && (typeof m.text === 'string' || Array.isArray(m.matrix)));
-    state.playlist.forEach(m => { if (!(+m.secs >= 1)) m.secs = state.plSec; });
+    state.playlist.forEach(m => {
+      if (!(+m.secs >= 1)) m.secs = state.plSec;
+      if (Array.isArray(m.matrix)) m.matrix = fitMatrix(m.matrix);
+    });
+    state.schedule.forEach(r => {
+      if (r.entry && Array.isArray(r.entry.matrix)) r.entry.matrix = fitMatrix(r.entry.matrix);
+    });
   } catch (e) { /* ignore a corrupt payload and start fresh */ }
 }
 
@@ -2011,7 +2022,7 @@ function renderPlaylist() {
     mk('✎', entryIsBoard(m) ? 'Load into the Grid to edit' : 'Load into Compose to edit', '', () => {
       plEdit = i;
       if (entryIsBoard(m)) {
-        gridBuf = m.matrix.map(r => r.slice());
+        gridBuf = fitMatrix(m.matrix);
         redrawGrid();
         showTab('grid', false);         /* keep the entry, do not re-read the board */
         toast('Entry #' + (i + 1) + ' loaded into the Grid');
@@ -2049,8 +2060,22 @@ function moveEntry(i, d) {
 
 function entryMatrix(m) {
   if (!m) return blankMatrix();
-  if (m.matrix) return m.matrix.map(r => r.slice());
+  if (m.matrix) return fitMatrix(m.matrix);
   return layoutMessage(m.text, m).matrix;
+}
+
+/* A matrix saved earlier was written against whatever grid was current at the
+   time. Crop it, or pad it with blanks, so it is always exactly ROWS x COLS by
+   the time setBoard() indexes into it. */
+function fitMatrix(m) {
+  const out = blankMatrix();
+  if (!Array.isArray(m)) return out;
+  for (let r = 0; r < ROWS && r < m.length; r++) {
+    const src = m[r];
+    if (!Array.isArray(src)) continue;
+    for (let c = 0; c < COLS && c < src.length; c++) out[r][c] = src[c] | 0;
+  }
+  return out;
 }
 
 function showEntry(i) {
@@ -2296,7 +2321,7 @@ function renderSchedule() {
     mk('▶', 'Show it now', '', () => { stopRotation(); stopSequence(); setBoard(entryMatrix(r.entry)); });
     mk('✎', entryIsBoard(r.entry) ? 'Load into the Grid' : 'Load into Compose', '', () => {
       if (entryIsBoard(r.entry)) {
-        gridBuf = r.entry.matrix.map(x => x.slice());
+        gridBuf = fitMatrix(r.entry.matrix);
         redrawGrid(); showTab('grid', false);
       } else {
         applyMessage(r.entry); showTab('compose');
@@ -2435,6 +2460,16 @@ togWire('#hideTog', () => settings.autoHide, v => { settings.autoHide = v; poke(
 /* The controls above are wired while `settings` and `state` still hold their
    defaults; load() replaces both afterwards. This pushes the restored values
    back into every control so the panel agrees with the board. */
+/* the panel's column-based layout and its one printed dimension both come
+   from COLS/ROWS rather than from numbers typed into the CSS and the markup */
+function applyGridMetrics() {
+  document.documentElement.style.setProperty('--cols', COLS);
+  const d = $('#gridDims');
+  if (d) d.textContent = ROWS + ' rows \u00d7 ' + COLS + ' columns';
+  const h = $('#hdrDims');
+  if (h) h.textContent = ROWS + ' \u00d7 ' + COLS;
+}
+
 function syncUI() {
   $('#spd').value = settings.stepMs;   $('#spdLbl').textContent = settings.stepMs;
   $('#stg').value = settings.stagger;  $('#stgLbl').textContent = settings.stagger;
@@ -2561,6 +2596,7 @@ load();
 fitCanvas();
 
 msgEl.value = state.text;
+applyGridMetrics();
 syncUI();
 updateMeter();
 updateHighlight();

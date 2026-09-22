@@ -1,6 +1,6 @@
 # Retro Tile Sign Board
 
-A digital split-flap message board — six rows of twenty-two flap drums, the
+A digital split-flap message board — eight rows of twenty-five flap drums, the
 kind that used to clatter through the departures at a railway station before
 the screens took over.
 
@@ -11,7 +11,7 @@ build step, no network, no dependencies.
 
 ## The board
 
-* **6 rows × 22 columns** — 132 independent drums, set 4 units apart across
+* **8 rows × 25 columns** — 200 independent drums, set 4 units apart across
   and 10 down so the rows read as separate courses rather than one block.
 * **1920 × 1080** fixed design stage on pure black, scaled to fit whatever
   screen it lands on.
@@ -62,7 +62,7 @@ build step, no network, no dependencies.
 * **No two drums turn at quite the same rate.** Each is given its own drag
   when a change starts, and no single flap takes quite the same time as the
   last, so the board spans about a 22 per cent spread between its slowest and
-  fastest drum. Without it 132 tiles move as one machine.
+  fastest drum. Without it 200 tiles move as one machine.
 * The wind-down is **sized to each drum's own journey**, never more than about
   half of it. A drum with only a few flaps to travel would otherwise spend its
   whole trip inside the deceleration and never run at speed at all.
@@ -78,7 +78,7 @@ build step, no network, no dependencies.
 The menu button, top right, slides the panel in. `M` toggles it, `Esc` closes.
 
 **Compose** — type the message. A column ruler and a per-row counter sit around
-the box. Auto-fit wraps on word boundaries across the six rows; literal mode
+the box. Auto-fit wraps on word boundaries across the eight rows; literal mode
 treats each typed line as one row. Horizontal and vertical alignment are
 independent. Colour chips insert tokens at the caret. Messages can be saved by
 name.
@@ -230,7 +230,7 @@ takes it back towards wood.
 
 ## Notes on the rendering
 
-The board is one canvas, not 132 elements. Each of the 72 flaps is drawn once
+The board is one canvas, not 200 elements. Each of the 72 flaps is drawn once
 into a sprite sheet built at the exact scale it will be blitted at, so painting
 a tile is a 1:1 pixel copy rather than a resample — that alone was the
 difference between 13 and 59 frames a second on a software rasteriser. The
