@@ -41,20 +41,24 @@ build step, no network, no dependencies.
   row by row, diagonally, out from the centre, in from the edges, scattered, or
   all together — and **Transition spread** sets how long the wave takes to
   cross.
-* The clicking is **sampled**. Seven short recordings-in-all-but-name — six flap
+* The clicking is **sampled**. Seven short recordings-in-all-but-name — six
   strikes and one heavier settle — are baked into the file as WAV data, picked
-  at random, pitch-varied per strike, and panned to the column they came from,
-  so a cascade is heard to travel across the board as well as seen. They were
-  synthesised offline by `tools/make-clicks.py`, so nothing is fetched from the
-  network and no third-party audio is involved. They are modelled on a small
-  dull metal flap rather than a wooden block: the ringing modes sit on
-  **inharmonic** bar-like ratios, which is most of what tells an ear metal from
-  wood, the fundamental sits near 360 Hz, and the contact burst is low-passed
-  with only a trace of bright edge left on top. Measured: a strike is −20 dB
-  down within 24–40 ms with a spectral centroid around 2.1 kHz, against
-  16–23 ms and 4.5 kHz for the wooden version it replaced.
-  A full sweep fires around 350 strikes a second, dense enough to read as one
-  rattle, with every one of the 132 landings getting through.
+  at random and panned to the column they came from, so a cascade is heard to
+  travel across the board. They were synthesised offline by
+  `tools/make-clicks.py`, so nothing is fetched from the network and no
+  third-party audio is involved. The mix was fitted by parameter search against
+  measured reference recordings: spectral centroid lands at 3331–3644 Hz
+  against the references' 3041 and 3761, with the energy sitting where theirs
+  does, in the 800 Hz – 4 kHz band.
+* **Pitch is held constant.** Playback rate stays at 1, so what varies across a
+  change is the rate of clicking, never the note. The variety comes from the
+  six different strikes and a little gain scatter.
+* Each drum runs at **20 clicks a second** at speed and **winds down over its
+  last 22 flaps — about two seconds — to 6 a second**, so a change ends on
+  clicks you can count rather than a burst cutting off. A few drums are held
+  back and arrive one at a time after the rest, which is what thins the tail:
+  one drum alone is already about eight clicks a second, so the only way the
+  end becomes countable is for nearly all of them to have stopped.
 
 ## The control panel
 

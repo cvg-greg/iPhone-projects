@@ -19,63 +19,50 @@ def lp(sig, a=0.30):
     return out
 
 def synth(seed, kind='click'):
-    """A small dull metal flap, not a wooden block.
+    """A relay click, tuned against measured reference recordings.
 
-    Two things separate the two materials to the ear. Wood rings on modes
-    close to whole-number ratios; metal rings on inharmonic ones, and that
-    mismatch is most of what says 'metal'. And wood's strike is bright and
-    instantly gone, where a damped metal flap keeps a low body for a few tens
-    of milliseconds. So the modes below sit on bar-like ratios, the
-    fundamental is dropped about an octave and a third, and the contact burst
-    is low-passed with only a trace of the bright tick left on top.
+    The references sit brighter and further forward than a wooden or a
+    ringing-metal strike: spectral centroid around 3.0-3.8 kHz, better than
+    half the energy between 800 Hz and 4 kHz, and only about 8 per cent below
+    300 Hz. So the low knock is only a trace here -- enough to give the strike
+    weight without turning it into a thud -- and the work is done by two
+    mid modes and a short bright one on top. Each flap is a single click:
+    the "click click" is the rate, not a doubled event.
     """
     rng = random.Random(seed)
-    dur   = 0.062 if kind == 'click' else 0.125
-    n     = int(dur * SR)
-    buf   = [0.0] * n
+    dur = 0.040 if kind == 'click' else 0.075
+    n   = int(dur * SR)
+    buf = [0.0] * n
+    at  = int(0.003 * SR)
+    tail = n - at
 
-    # the flap swinging through air just before it lands
-    air = int(0.005 * SR)
-    for i in range(air):
-        buf[i] += rng.uniform(-1, 1) * 0.035 * (i / air) ** 2
-
-    t0 = air
-    tail = n - t0
+    # contact burst, only lightly tamed so it keeps the reference's brightness
     raw  = [rng.uniform(-1, 1) for _ in range(tail)]
-    body = lp(raw, 0.30)                      # the dull part of the contact
-    tick = hp(raw, 0.65)                      # a sliver of bright edge
-    tau  = rng.uniform(0.0045, 0.0075) if kind == 'click' else rng.uniform(0.008, 0.013)
+    band = lp(raw, 0.45)          # fitted to the reference brightness
+    tau  = rng.uniform(0.0015, 0.0025) if kind == 'click' else rng.uniform(0.0026, 0.0038)
     for i in range(tail):
-        t = i / SR
-        buf[t0 + i] += body[i] * math.exp(-t / tau) * 1.00
-        buf[t0 + i] += tick[i] * math.exp(-t / 0.0012) * 0.20
+        buf[at + i] += band[i] * math.exp(-(i / SR) / tau)
 
-    # inharmonic modes, the way a struck metal plate rings
     if kind == 'click':
-        f0     = rng.uniform(300, 400)
-        ratios = [1.0, 1.77, 2.81, 4.19]
-        decays = [rng.uniform(0.017, 0.023), rng.uniform(0.012, 0.016),
-                  rng.uniform(0.008, 0.011), rng.uniform(0.005, 0.007)]
-        amps   = [0.46, 0.26, 0.15, 0.08]
+        modes = [(rng.uniform(175, 240),   rng.uniform(0.008, 0.012), 0.13),
+                 (rng.uniform(420, 650),   rng.uniform(0.008, 0.013), 0.16),
+                 (rng.uniform(1100, 1600), rng.uniform(0.006, 0.010), 0.28),
+                 (rng.uniform(2400, 3200), rng.uniform(0.004, 0.007), 0.26),
+                 (rng.uniform(4200, 5200), rng.uniform(0.002, 0.004), 0.03)]
     else:
-        f0     = rng.uniform(190, 250)
-        ratios = [1.0, 1.74, 2.88, 4.27]
-        decays = [rng.uniform(0.044, 0.056), rng.uniform(0.030, 0.038),
-                  rng.uniform(0.018, 0.024), rng.uniform(0.011, 0.015)]
-        amps   = [0.52, 0.28, 0.14, 0.07]
+        modes = [(rng.uniform(150, 200),   rng.uniform(0.016, 0.024), 0.18),
+                 (rng.uniform(380, 560),   rng.uniform(0.014, 0.020), 0.18),
+                 (rng.uniform(900, 1300),  rng.uniform(0.012, 0.018), 0.30),
+                 (rng.uniform(2100, 2800), rng.uniform(0.007, 0.011), 0.24),
+                 (rng.uniform(3800, 4600), rng.uniform(0.004, 0.006), 0.04)]
 
-    for ratio, decay, amp in zip(ratios, decays, amps):
-        f  = f0 * ratio * rng.uniform(0.985, 1.015)
-        f2 = f * rng.uniform(1.004, 1.012)    # a near neighbour, for the faint beating metal has
+    for f, dec, amp in modes:
         ph = rng.uniform(0, 2 * math.pi)
-        for i in range(t0, n):
-            t = (i - t0) / SR
-            e = math.exp(-t / decay)
-            buf[i] += (math.sin(2 * math.pi * f * t + ph) * 0.75 +
-                       math.sin(2 * math.pi * f2 * t + ph * 0.5) * 0.25) * e * amp
+        for i in range(tail):
+            t = i / SR
+            buf[at + i] += math.sin(2 * math.pi * f * t + ph) * math.exp(-t / dec) * amp
 
-    # fade the last 3ms so the buffer never ends on a step
-    fade = int(0.003 * SR)
+    fade = int(0.0025 * SR)
     for i in range(fade):
         buf[n - 1 - i] *= i / fade
 
@@ -107,5 +94,5 @@ open('clicks.js.frag', 'w').write(js)
 
 total = sum(len(c) for c in clicks) + len(thunk)
 print('6 clicks + 1 settle')
-print('sample rate %d Hz, click %d ms, settle %d ms' % (SR, 62, 125))
+print('sample rate %d Hz, click %d ms, settle %d ms' % (SR, 40, 75))
 print('embedded base64 total: %.1f KB' % (total / 1024.0))
