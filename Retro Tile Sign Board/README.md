@@ -41,24 +41,28 @@ build step, no network, no dependencies.
   row by row, diagonally, out from the centre, in from the edges, scattered, or
   all together — and **Transition spread** sets how long the wave takes to
   cross.
-* The clicking is **sampled**. Seven short recordings-in-all-but-name — six
-  strikes and one heavier settle — are baked into the file as WAV data, picked
-  at random and panned to the column they came from, so a cascade is heard to
-  travel across the board. They were synthesised offline by
-  `tools/make-clicks.py`, so nothing is fetched from the network and no
-  third-party audio is involved. The mix was fitted by parameter search against
-  measured reference recordings: spectral centroid lands at 3331–3644 Hz
-  against the references' 3041 and 3761, with the energy sitting where theirs
-  does, in the 800 Hz – 4 kHz band.
-* The strike is deliberately **soft-edged**: the contact burst sits under the
-  modes rather than on top of them, and the onset is given a couple of
-  milliseconds to arrive. Only about a third of a click's energy lands in its
-  first 3 ms, against better than half before, which is the difference between
-  a tick in the room and a snap at you. It is meant to read like a loud clock
-  — present, but not asking for attention.
+* The clicking is **recorded, not synthesised**. Six strikes and one settle
+  are isolated from two recordings of a real mechanical clicker, made for this
+  project, and baked into the file as WAV data. Nothing is fetched from the
+  network.
+* The processing is deliberately light. A strike is not a clean event — it
+  slides, it scrapes, it rings a little — and that mess is what makes a board
+  sound like a mechanism instead of a sequencer. Each hit is windowed to the
+  gap before the next so no neighbour bleeds in, gently band-limited, and given
+  a soft decay well after the strike itself; the natural tail survives.
+  `tools/make-clicks-from-recordings.py` rebuilds them from
+  `tools/recordings/`.
+* The strikes keep their own loudness, but only just. Off the recording they
+  ran 20 dB apart, which reads as six different sounds; they are pulled to
+  about **4 dB** apart, near enough identical to be one mechanism, different
+  enough never to hear a loop.
 * **Pitch is held constant.** Playback rate stays at 1, so what varies across a
   change is the rate of clicking, never the note. The variety comes from the
   six different strikes and a little gain scatter.
+* **No two drums turn at quite the same rate.** Each is given its own drag
+  when a change starts, and no single flap takes quite the same time as the
+  last, so the board spans about a 22 per cent spread between its slowest and
+  fastest drum. Without it 132 tiles move as one machine.
 * Each drum runs at **20 clicks a second** at speed and **winds down over its
   last 22 flaps — about two seconds — to 6 a second**, so a change ends on
   clicks you can count rather than a burst cutting off. A few drums are held
