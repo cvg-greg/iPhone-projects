@@ -18,3 +18,15 @@ Full guide: [`Music GenEngine/README.md`](Music%20GenEngine/README.md)
 Either clone this repo, or on GitHub press **Code → Download ZIP**, unzip, and
 drag the `Music GenEngine` folder onto your Desktop so it lives at
 `~/Desktop/Music GenEngine` — then double-click `index.html` inside it.
+
+## 🚩 Retro Tile Sign Board
+
+A digital split-flap message board — eight rows of twenty-five mechanical flap
+drums, rendered at 1920 × 1080 on black. Type a message and the tiles roll
+through the character set until they land on it, clicking as they go. Colour
+flaps, a tile painter, a timed message sequence, clock mode, and PNG export at
+300 DPI.
+
+**→ Open [`Retro Tile Sign Board/index.html`](Retro%20Tile%20Sign%20Board/index.html) in your browser.**
+
+Full guide: [`Retro Tile Sign Board/README.md`](Retro%20Tile%20Sign%20Board/README.md)
