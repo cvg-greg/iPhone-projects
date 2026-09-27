@@ -1,0 +1,155 @@
+<title>Fifty-State Hosting Plan</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#F6F8F8; --surface:#FDFEFE; --ink:#1C2426; --ink-soft:#4A5A5C; --ink-faint:#71827F;
+  --accent:#0E6E68; --accent-ink:#0A5751; --accent-wash:#E3EFED;
+  --caution:#96660F; --caution-wash:#F6EEDD;
+  --border:#D8DFDF; --border-strong:#B9C6C4;
+  --good:#19714B; --bad:#9A3B2E;
+}
+:root:not([data-theme="light"]){}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#101718; --surface:#172021; --ink:#E4EBEA; --ink-soft:#A8B8B5; --ink-faint:#7C8D8A;
+    --accent:#4BB8AE; --accent-ink:#6FCCC3; --accent-wash:#16302E;
+    --caution:#D6A24E; --caution-wash:#2E2717;
+    --border:#27383A; --border-strong:#3B5153;
+    --good:#5DBE92; --bad:#D97F6E;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#101718; --surface:#172021; --ink:#E4EBEA; --ink-soft:#A8B8B5; --ink-faint:#7C8D8A;
+  --accent:#4BB8AE; --accent-ink:#6FCCC3; --accent-wash:#16302E;
+  --caution:#D6A24E; --caution-wash:#2E2717;
+  --border:#27383A; --border-strong:#3B5153;
+  --good:#5DBE92; --bad:#D97F6E;
+}
+body{background:var(--bg);color:var(--ink);font:16px/1.65 "IBM Plex Sans",system-ui,sans-serif;margin:0;}
+.page{max-width:46rem;margin:0 auto;padding:3rem 1.25rem 5rem;}
+.eyebrow{font-family:"IBM Plex Mono",monospace;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 .75rem;}
+h1{font-family:"Archivo",system-ui,sans-serif;font-variation-settings:"wdth" 118;font-weight:750;font-size:clamp(1.9rem,5vw,2.6rem);line-height:1.08;letter-spacing:-.01em;margin:0 0 1rem;text-wrap:balance;}
+h2{font-family:"Archivo",system-ui,sans-serif;font-variation-settings:"wdth" 112;font-weight:680;font-size:1.3rem;margin:3rem 0 .75rem;text-wrap:balance;}
+h3{font-family:"Archivo",system-ui,sans-serif;font-variation-settings:"wdth" 108;font-weight:640;font-size:1.02rem;margin:0 0 .35rem;}
+p{margin:0 0 1rem;max-width:65ch;}
+.lede{font-size:1.08rem;color:var(--ink-soft);max-width:60ch;}
+code,.mono{font-family:"IBM Plex Mono",monospace;font-size:.92em;}
+.verdict{background:var(--surface);border:1px solid var(--border-strong);border-left:4px solid var(--accent);padding:1.25rem 1.4rem;margin:2rem 0;}
+.verdict h2{margin:0 0 .5rem;font-size:1.15rem;}
+.verdict p{margin:0;color:var(--ink-soft);}
+.verdict strong{color:var(--ink);}
+.why{list-style:none;padding:0;margin:1.25rem 0 0;display:grid;gap:.9rem;}
+.why li{padding-left:1.4rem;position:relative;max-width:65ch;}
+.why li::before{content:"";position:absolute;left:0;top:.52em;width:.55rem;height:.55rem;background:var(--accent);}
+.why b{font-weight:600;}
+.tablewrap{overflow-x:auto;margin:1.25rem 0 .5rem;border:1px solid var(--border);}
+table{border-collapse:collapse;width:100%;min-width:640px;font-size:.9rem;background:var(--surface);}
+th{font-family:"IBM Plex Mono",monospace;font-size:.7rem;letter-spacing:.09em;text-transform:uppercase;text-align:left;color:var(--ink-faint);padding:.6rem .8rem;border-bottom:1px solid var(--border-strong);}
+td{padding:.6rem .8rem;border-bottom:1px solid var(--border);vertical-align:top;}
+tr:last-child td{border-bottom:none;}
+.yes{color:var(--good);font-weight:600;}
+.no{color:var(--bad);font-weight:600;}
+.meh{color:var(--caution);font-weight:600;}
+.tnote{font-size:.82rem;color:var(--ink-faint);margin:.5rem 0 0;}
+.phase{border:1px solid var(--border);background:var(--surface);margin:0 0 1.25rem;padding:1.25rem 1.4rem;}
+.phase header{display:flex;align-items:baseline;gap:.9rem;flex-wrap:wrap;margin-bottom:.6rem;}
+.pnum{font-family:"IBM Plex Mono",monospace;font-size:.72rem;letter-spacing:.12em;color:var(--accent);border:1px solid var(--accent);padding:.2rem .55rem;white-space:nowrap;}
+.pcost{margin-left:auto;font-family:"IBM Plex Mono",monospace;font-size:.8rem;color:var(--ink-faint);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.phase ul{margin:.5rem 0 0;padding-left:1.2rem;color:var(--ink-soft);}
+.phase li{margin-bottom:.45rem;max-width:62ch;}
+.phase li b{color:var(--ink);font-weight:600;}
+.callout{background:var(--caution-wash);border:1px solid var(--caution);border-left-width:4px;padding:1rem 1.25rem;margin:1.5rem 0;max-width:65ch;box-sizing:border-box;}
+.callout p{margin:0;color:var(--ink);font-size:.95rem;}
+.callout .tag{font-family:"IBM Plex Mono",monospace;font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--caution);display:block;margin-bottom:.35rem;}
+.mapnote{background:var(--accent-wash);border:1px solid var(--accent);border-left-width:4px;padding:1rem 1.25rem;margin:1.5rem 0;max-width:65ch;box-sizing:border-box;}
+.mapnote p{margin:0;font-size:.95rem;}
+.mapnote .tag{font-family:"IBM Plex Mono",monospace;font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-ink);display:block;margin-bottom:.35rem;}
+footer{margin-top:3.5rem;padding-top:1rem;border-top:1px solid var(--border);font-size:.8rem;color:var(--ink-faint);}
+a{color:var(--accent-ink);}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important;}}
+</style>
+
+<div class="page">
+<p class="eyebrow">Infrastructure recommendation · Sept 2026</p>
+<h1>Fifty-State Hosting Plan</h1>
+<p class="lede">Where to host a platform of fifteen FastAPI services, PostgreSQL&nbsp;+&nbsp;PostGIS, and S3-stored raw lab payloads — starting at 1–2 states, built to reach all 50 with redundancy, automated backups, mirroring, and load balancing.</p>
+
+<div class="verdict">
+  <h2>Recommendation: AWS</h2>
+  <p>Run <strong>RDS for PostgreSQL (Multi-AZ)</strong> with PostGIS, <strong>native S3</strong> for lab payloads, and the fifteen services on <strong>EC2 under systemd behind an Application Load Balancer</strong>. Every requirement on the list — point-in-time recovery, cross-region mirroring, load balancing, HIPAA-grade compliance, and a 50-state growth path — is a configuration step on AWS, not a migration.</p>
+</div>
+
+<h2>Why AWS specifically</h2>
+<ul class="why">
+  <li><b>The code already speaks S3 — AWS is where that dialect is native.</b> No compatibility layer, no signature quirks. Versioning, lifecycle tiering, and Cross-Region Replication (your "mirroring") are bucket settings, not projects.</li>
+  <li><b>Managed Postgres with PostGIS, exactly as specified.</b> RDS for PostgreSQL ships PostGIS as a supported extension, with automated daily backups plus point-in-time recovery (up to 35 days) out of the box. Multi-AZ gives synchronous standby failover; read replicas and Aurora Global Database are the same engine when scale demands them.</li>
+  <li><b>Day one looks exactly like the plan you already wrote.</b> An EC2 instance running fifteen systemd units is your current design, verbatim — so the hosted flip changes one variable (where it runs), not two (where it runs <em>and</em> how it's orchestrated). ECS Fargate is available later without changing providers.</li>
+  <li><b>Compliance that survives 50 state contracts.</b> Raw lab payloads are very likely PHI: AWS signs a HIPAA BAA covering RDS, S3, EC2, and ALB, and holds FedRAMP authorizations. GovCloud (US) exists if a state contract ever demands it. State procurement offices already know AWS paperwork.</li>
+  <li><b>The most US regions of any provider.</b> us-east-1, us-east-2, us-west-1, us-west-2, plus two GovCloud regions — enough for genuine geographic redundancy and any residency clause a state slips into a contract.</li>
+</ul>
+
+<h2>How the field compares</h2>
+<div class="tablewrap">
+<table>
+  <thead><tr><th>Provider</th><th>Managed PostGIS</th><th>S3 API</th><th>HIPAA BAA</th><th>US regions</th><th>Verdict</th></tr></thead>
+  <tbody>
+    <tr><td><b>AWS</b></td><td class="yes">Yes — RDS / Aurora</td><td class="yes">Native</td><td class="yes">Yes</td><td>4 + 2 GovCloud</td><td>Recommended</td></tr>
+    <tr><td><b>Google Cloud</b></td><td class="yes">Yes — Cloud SQL</td><td class="meh">Interop mode, imperfect</td><td class="yes">Yes</td><td>~12 (smaller footprint each)</td><td>Solid runner-up</td></tr>
+    <tr><td><b>Azure</b></td><td class="yes">Yes — Flexible Server</td><td class="no">No — Blob API differs</td><td class="yes">Yes</td><td>Many</td><td>Breaks the S3 design; only if a state mandates Microsoft</td></tr>
+    <tr><td><b>DigitalOcean</b></td><td class="yes">Yes — Managed PG</td><td class="yes">Spaces (S3-compat)</td><td class="no">No</td><td>3</td><td>Cheapest start, but no BAA — disqualifying if payloads are PHI</td></tr>
+    <tr><td><b>Hetzner / OVH</b></td><td class="meh">Partial</td><td class="meh">S3-compat storage</td><td class="no">No</td><td>1–2</td><td>Cost play only; too thin for this</td></tr>
+  </tbody>
+</table>
+</div>
+<p class="tnote">"Interop mode" on GCP: Cloud Storage accepts S3-style requests but with enough auth and semantics differences that "the code already speaks S3" stops being free.</p>
+
+<div class="callout">
+  <p><span class="tag">Before the first real payload</span>If lab payloads contain PHI, sign the AWS Business Associate Addendum (a self-service click-through in AWS Artifact) <b>before</b> production data lands, and turn on encryption at rest (default on RDS and S3) plus CloudTrail audit logging. Retrofitting compliance is far more expensive than starting with it.</p>
+</div>
+
+<h2>Rollout in three phases</h2>
+<p>States are <em>tenants</em>, not regions — adding a state is a data and onboarding event, not an infrastructure build. The infrastructure only steps up three times.</p>
+
+<section class="phase">
+  <header><span class="pnum">PHASE 1</span><h3>1–2 states · one region</h3><span class="pcost">≈ $400–700 / mo</span></header>
+  <ul>
+    <li><b>RDS PostgreSQL Multi-AZ</b> with PostGIS — automated backups, 35-day point-in-time recovery, synchronous standby in a second availability zone.</li>
+    <li><b>S3 bucket with versioning</b> for raw lab payloads; lifecycle rules tier old payloads to Glacier.</li>
+    <li><b>Two EC2 instances behind an ALB</b>, each running the fifteen FastAPI services as systemd units (provisioned by cloud-init or Ansible). Two boxes instead of one is the entire redundancy story at this scale.</li>
+    <li><b>Route 53</b> for DNS with health checks; ACM for free TLS on the load balancer.</li>
+  </ul>
+</section>
+
+<section class="phase">
+  <header><span class="pnum">PHASE 2</span><h3>3–15 states · hardened + mirrored</h3><span class="pcost">≈ $1.5k–4k / mo</span></header>
+  <ul>
+    <li><b>Terraform everything</b> — from here on, infrastructure changes are code review, not console clicks.</li>
+    <li><b>S3 Cross-Region Replication</b> to a second region: the mirroring requirement, live.</li>
+    <li><b>RDS read replica</b> (in-region for load, cross-region for disaster recovery) plus AWS Backup vault copies to the second region.</li>
+    <li><b>Auto Scaling group</b> for the service tier, or migrate the fifteen units to ECS Fargate if per-service scaling starts to matter.</li>
+    <li><b>CloudWatch alarms, Secrets Manager, WAF</b> on the ALB — the operational floor for handling many states' data.</li>
+  </ul>
+</section>
+
+<section class="phase">
+  <header><span class="pnum">PHASE 3</span><h3>Toward 50 states · multi-region</h3><span class="pcost">≈ $8k–20k+ / mo</span></header>
+  <ul>
+    <li><b>Aurora PostgreSQL</b> (drop-in from RDS) with <b>Global Database</b> — storage-level replication to a second region, sub-minute failover.</li>
+    <li><b>Active/passive multi-region</b>: full stack standing in region two, Route 53 failover routing in front. Go active/active only if latency data ever demands it.</li>
+    <li><b>Partitioning decision</b>: one Aurora cluster with state-partitioned tables usually beats 50 small databases — revisit with real per-state volumes.</li>
+    <li><b>CloudFront</b> in front of the ALB for TLS termination at the edge and DDoS absorption.</li>
+    <li><b>GovCloud enclave</b> only if and when a specific state contract requires it.</li>
+  </ul>
+</section>
+
+<div class="mapnote">
+  <p><span class="tag">The one-sentence version</span>Start with the smallest honest AWS footprint — Multi-AZ RDS, versioned S3, two EC2 boxes behind an ALB — and let backups, mirroring, and multi-region redundancy arrive as configuration on the same platform, so scaling to 50 states never requires changing providers or rewriting the S3-speaking code.</p>
+</div>
+
+<h2>Costs and cautions</h2>
+<p>Figures above are planning bands, not quotes — RDS instance class and payload volume dominate. Two habits keep AWS bills sane: tag every resource from day one, and set an AWS Budgets alarm before the first deploy. The main lock-in risk is Aurora-specific features; staying on vanilla PostgreSQL semantics and the plain S3 API (both true of this design) keeps the exit door open.</p>
+<p>If the payloads turn out to carry no PHI and budgets are tight, DigitalOcean is a legitimate Phase-1 shortcut (managed Postgres with PostGIS, S3-compatible Spaces, load balancers) — but it has no BAA and three US datacenters, so it is a place to start, not a place to reach 50 states.</p>
+
+<footer>Prepared for the lab-services platform · assumes lab payloads may contain PHI · pricing bands are September 2026 order-of-magnitude estimates.</footer>
+</div>
